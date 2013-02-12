@@ -9,20 +9,21 @@ namespace simference
 	Grammar::String Grammar::Variable::unroll()
 	{
 		// Accumulate the productions that are actually applicable
-		vector<Production*> applicableProds;
-		for (Production p : productions())
+		const vector<Production>& prods = productions();
+		vector<unsigned int> applicableProds;
+		for (unsigned int i = 0; i < prods.size(); i++)
 		{
-			if (p.conditionalFunction(*this))
-				applicableProds.push_back(&p);
+			if (prods[i].conditionalFunction(*this))
+				applicableProds.push_back(i);
 		}
 
 		// Figure out their probabilities
-		vector<double> probs(applicableProds.size(), 0.0);
+		vector<double> probs;
 		double totalProb = 0.0;
-		for (unsigned int i = 0; i < applicableProds.size(); i++)
+		for (unsigned int i : applicableProds)
 		{
-			double prob = applicableProds[i]->probabilityFunction(*this);
-			probs[i] = prob;
+			double prob = prods[i].probabilityFunction(*this);
+			probs.push_back(prob);
 			totalProb += prob;
 		}
 		for (unsigned int i = 0; i < probs.size(); i++)
@@ -30,9 +31,9 @@ namespace simference
 
 		// Sample one proportional to its probability and use it to unroll
 		unsigned int indexToUse = (unsigned int)(MultinomialDistribution<double>::Sample(probs));
-		Production* prodToUse = applicableProds[indexToUse];
+		const Production& prodToUse = prods[applicableProds[indexToUse]];
 		double probability = probs[indexToUse];
-		auto succData = prodToUse->unrollFunction(*this);
+		auto succData = prodToUse.unrollFunction(*this);
 		succData.logprob += log(probability);
 		return succData;
 	}

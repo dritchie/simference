@@ -1,6 +1,66 @@
+#include "MobileGrammar.h"
+#include <GL/glut.h>
 
+using namespace simference;
+using namespace std;
+
+// Globals (yuck)
+Grammar::String axiom;
+Grammar::String derivedString;
+
+void reshape(int w, int h)
+{
+	glViewport(0, 0, w, h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(-10.0, 10.0, -10.0, 10.0);
+}
+
+void display()
+{
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glTranslatef(0.0f, 9.5f, 0.0f);
+	for (Grammar::SymbolPtr s : derivedString.symbols)
+	{
+		SimpleMobileGrammar::RenderableTerminal* rt = (SimpleMobileGrammar::RenderableTerminal*)s.get();
+		rt->render();
+	}
+
+	glutSwapBuffers();
+}
+
+void keyboard(unsigned char key, int x, int y)
+{
+	bool needsRedisplay = false;
+	switch (key)
+	{
+	case 'n':
+		derivedString = Grammar::Sample(axiom).derivedString();
+		needsRedisplay = true;
+	}
+	if (needsRedisplay)
+		glutPostRedisplay();
+}
 
 int main(int argc, char** argv)
 {
+	glutInit(&argc, argv);
+	glutInitWindowSize(800, 800);
+	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
+	glutCreateWindow("Calderian Mobiles");
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	glutDisplayFunc(display);
+	glutReshapeFunc(reshape);
+	glutKeyboardFunc(keyboard);
+
+	// We start with a single string (the string from which everything hangs)
+	axiom.symbols.push_back(Grammar::SymbolPtr(new SimpleMobileGrammar::StringTerminal(2.0)));
+	axiom.symbols.push_back(Grammar::SymbolPtr(new SimpleMobileGrammar::StringEndpointVariable(0)));
+
+	glutMainLoop();
+
 	return 0;
 }
