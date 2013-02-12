@@ -1,6 +1,8 @@
 #include "MobileGrammar.h"
+#include <iostream>
 #include <GL/glut.h>
 
+using namespace simference;
 using namespace simference::Grammar;
 using namespace simference::Grammar::SimpleMobileGrammar;
 using namespace std;
@@ -25,7 +27,7 @@ void display()
 	glTranslatef(0.0f, 9.5f, 0.0f);
 	for (SymbolPtr s : derivedString.symbols)
 	{
-		RenderableTerminal* rt = (RenderableTerminal*)s.get();
+		Renderable* rt = dynamic_cast<Renderable*>(s.get());
 		rt->render();
 	}
 
@@ -39,7 +41,11 @@ void keyboard(unsigned char key, int x, int y)
 	{
 	case 'n':
 		derivedString = Sample(axiom).derivedString();
+		for (SymbolPtr s : derivedString.symbols)
+			cout << s->print().c_str();
+		cout << endl;
 		needsRedisplay = true;
+		break;
 	}
 	if (needsRedisplay)
 		glutPostRedisplay();

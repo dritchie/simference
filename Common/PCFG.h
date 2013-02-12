@@ -14,6 +14,7 @@ namespace simference
 		{
 		public:
 			virtual bool isTerminal() = 0;
+			virtual std::string print() = 0;
 		};
 
 		typedef std::shared_ptr<Symbol> SymbolPtr;
