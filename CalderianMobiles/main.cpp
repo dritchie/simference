@@ -1,12 +1,13 @@
 #include "MobileGrammar.h"
 #include <GL/glut.h>
 
-using namespace simference;
+using namespace simference::Grammar;
+using namespace simference::Grammar::SimpleMobileGrammar;
 using namespace std;
 
 // Globals (yuck)
-Grammar::String axiom;
-Grammar::String derivedString;
+String axiom;
+String derivedString;
 
 void reshape(int w, int h)
 {
@@ -22,9 +23,9 @@ void display()
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glTranslatef(0.0f, 9.5f, 0.0f);
-	for (Grammar::SymbolPtr s : derivedString.symbols)
+	for (SymbolPtr s : derivedString.symbols)
 	{
-		SimpleMobileGrammar::RenderableTerminal* rt = (SimpleMobileGrammar::RenderableTerminal*)s.get();
+		RenderableTerminal* rt = (RenderableTerminal*)s.get();
 		rt->render();
 	}
 
@@ -37,7 +38,7 @@ void keyboard(unsigned char key, int x, int y)
 	switch (key)
 	{
 	case 'n':
-		derivedString = Grammar::Sample(axiom).derivedString();
+		derivedString = Sample(axiom).derivedString();
 		needsRedisplay = true;
 	}
 	if (needsRedisplay)
@@ -57,8 +58,8 @@ int main(int argc, char** argv)
 	glutKeyboardFunc(keyboard);
 
 	// We start with a single string (the string from which everything hangs)
-	axiom.symbols.push_back(Grammar::SymbolPtr(new SimpleMobileGrammar::StringTerminal(2.0)));
-	axiom.symbols.push_back(Grammar::SymbolPtr(new SimpleMobileGrammar::StringEndpointVariable(0)));
+	axiom.symbols.push_back(SymbolPtr(new StringTerminal(2.0)));
+	axiom.symbols.push_back(SymbolPtr(new StringEndpointVariable(0)));
 
 	glutMainLoop();
 

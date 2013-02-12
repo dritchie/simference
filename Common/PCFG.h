@@ -8,9 +8,8 @@
 
 namespace simference
 {
-	class Grammar
+	namespace Grammar
 	{
-	public:
 		class Symbol
 		{
 		public:
@@ -73,8 +72,8 @@ namespace simference
 			std::unordered_map<SymbolPtr, String> successorMap;
 		};
 
-		static DerivationTree Sample(const String& axiom);
-	};
+		DerivationTree Sample(const String& axiom);
+	}
 }
 
 #endif
