@@ -32,7 +32,7 @@ namespace simference
 				probs[i] /= totalProb;
 
 			// Sample one proportional to its probability and use it to unroll
-			unsigned int indexToUse = (unsigned int)(MultinomialDistribution<double>::Sample(probs));
+			unsigned int indexToUse = (unsigned int)(Math::Probability::MultinomialDistribution<double>::Sample(probs));
 			const Production& prodToUse = prods[applicableProds[indexToUse]];
 			double probability = probs[indexToUse];
 			auto succData = prodToUse.unrollFunction(*this);

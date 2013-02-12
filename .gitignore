@@ -9,3 +9,7 @@
 *.pdb
 *.obj
 *.idb
+
+/CalderianMobiles/Debug/*.exe
+
+/CalderianMobiles/*.user
