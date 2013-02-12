@@ -2,14 +2,11 @@
 *.sdf
 *.suo
 *.tlog
-
 *.ilk
 *.lastbuildstate
 *.log
 *.pdb
 *.obj
 *.idb
-
-/CalderianMobiles/Debug/*.exe
-
-/CalderianMobiles/*.user
+*.exe
+*.user
