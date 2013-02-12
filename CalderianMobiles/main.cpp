@@ -40,10 +40,11 @@ void keyboard(unsigned char key, int x, int y)
 	switch (key)
 	{
 	case 'n':
-		derivedString = Sample(axiom).derivedString();
-		for (SymbolPtr s : derivedString.symbols)
-			cout << s->print().c_str();
-		cout << endl;
+		auto dtree = Sample(axiom);
+		derivedString = dtree.derivedString();
+		//for (SymbolPtr s : derivedString.symbols)
+		//	cout << s->print().c_str();
+		//cout << endl;
 		needsRedisplay = true;
 		break;
 	}

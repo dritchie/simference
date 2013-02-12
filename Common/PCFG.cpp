@@ -80,7 +80,9 @@ namespace simference
 				if (!s->isTerminal())
 				{
 					Variable* var = (Variable*)(s.get());
-					dtree.successorMap[s] = var->unroll();
+					auto& newsyms = dtree.successorMap[s] = var->unroll();
+					for (auto it = newsyms.symbols.rbegin(); it != newsyms.symbols.rend(); it++)
+						fringe.push(*it);
 				}
 			}		
 			return dtree;

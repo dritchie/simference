@@ -28,9 +28,9 @@ namespace simference
 					[](const Variable& v)
 					{
 						vector<SymbolPtr> s;
-						double mass = SimpleMobileGrammar::stringLength.sample();
+						double mass = SimpleMobileGrammar::weightMass.sample();
 						s.push_back(SymbolPtr(new WeightTerminal(mass)));
-						return String(s, stringLength.logprob(mass));
+						return String(s, weightMass.logprob(mass));
 					}
 				));
 				// 2) Stick a rod, plus the beginnings of its two branches, onto the end of this string
@@ -140,7 +140,11 @@ namespace simference
 				// Push down by the size (which is interpreted as radius)
 				glTranslatef(0.0f, -mass, 0.0f);
 
+				// Squish along z so we can render in '2d'
+				glScalef(1.0f, 1.0f, 0.01f);
+
 				// Draw a weight as a sphere
+				SET_WEIGHT_COLOR;
 				glutSolidSphere(mass, WEIGHT_SLICES, WEIGHT_SLICES);
 			}
 

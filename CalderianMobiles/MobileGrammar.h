@@ -21,15 +21,11 @@ namespace simference
 		namespace SimpleMobileGrammar
 		{
 			// Parameters
-			//static simference::Math::Probability::NormalDistribution<double> stringLength(2.0, 0.5);
-			//static simference::Math::Probability::NormalDistribution<double> rodLength(3.0, 1.0);
-			//static simference::Math::Probability::NormalDistribution<double> rodConnect(0.5, 0.15);
-			//static simference::Math::Probability::NormalDistribution<double> weightMass(1.0, 0.5);
 			static simference::Math::Probability::TruncatedNormalDistribution<double> stringLength(2.0, 0.5, 0.0, 10.0);
 			static simference::Math::Probability::TruncatedNormalDistribution<double> rodLength(3.0, 1.0, 0.0, 10.0);
 			static simference::Math::Probability::TruncatedNormalDistribution<double> rodConnect(0.5, 0.15, 0.0, 1.0);
-			static simference::Math::Probability::TruncatedNormalDistribution<double> weightMass(1.0, 0.5, 0.0, 10.0);
-			static unsigned int maxDepth = 6;
+			static simference::Math::Probability::TruncatedNormalDistribution<double> weightMass(0.5, 0.25, 0.0, 10.0);
+			static unsigned int maxDepth = 5;
 
 			class StringEndpointVariable : public Variable
 			{
