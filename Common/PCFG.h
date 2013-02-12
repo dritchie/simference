@@ -3,18 +3,50 @@
 
 #include <functional>
 #include <vector>
-#include <utility>
+#include <memory>
+#include <unordered_map>
 
 namespace simference
 {
 	class Grammar
 	{
-		class Variable;
-		class Symbol;
+	public:
+		class Symbol
+		{
+		public:
+			virtual bool isTerminal() = 0;
+		};
 
-		typedef std::function<bool(Variable*)> ProductionConditionalFunction;
-		typedef std::function<double(Variable*)> ProductionProbabilityFunction;
-		typedef std::function<std::pair<std::vector<Symbol*>,double>(Variable*)> ProductionUnrollFunction;
+		typedef std::shared_ptr<Symbol> SymbolPtr;
+
+		class String
+		{
+		public:
+			String(const std::vector<SymbolPtr>& syms, double lp)
+				: logprob(lp), symbols(syms) {}
+			String() : logprob(0.0) {}
+			double logprob;
+			std::vector<SymbolPtr> symbols;
+		};
+
+		class Production;
+		class Variable : public Symbol
+		{
+		public:
+			bool isTerminal() { return false; }
+			String unroll();
+			virtual const std::vector<Production>& productions() = 0;
+		};
+
+		class Terminal : public Symbol
+		{
+		public:
+			bool isTerminal() { return true; }
+		};
+
+		typedef std::function<bool(const Variable&)> ProductionConditionalFunction;
+		typedef std::function<double(const Variable&)> ProductionProbabilityFunction;
+		typedef std::function<String(const Variable&)> ProductionUnrollFunction;
 
 		class Production
 		{
@@ -23,7 +55,7 @@ namespace simference
 				ProductionProbabilityFunction probFunc,
 				ProductionUnrollFunction unrollFunc)
 				:
-			conditionalFunction(condFunc),
+				conditionalFunction(condFunc),
 				probabilityFunction(probFunc),
 				unrollFunction(unrollFunc)
 			{}
@@ -33,47 +65,15 @@ namespace simference
 			ProductionUnrollFunction unrollFunction;
 		};
 
-		typedef std::vector<Production> ProductionList;
-
-		class Symbol
-		{
-		public:
-			virtual bool isTerminal() = 0;
-		};
-
-		class Variable : public Symbol
-		{
-		public:
-			bool isTerminal() { return false; }
-			std::pair<std::vector<Symbol*>, double> unroll();
-			virtual const ProductionList& productions() = 0;
-		};
-
-		class Terminal : public Symbol
-		{
-		public:
-			bool isTerminal() { return true; }
-		};
-
-		class Derivation
-		{
-		public:
-			Derivation() : probability(1.0) {}
-			Derivation(const std::vector<Symbol*> syms, double prob)
-				: symbols(syms), probability(prob) {}
-			Derivation unroll();
-			std::vector<Symbol*> symbols;
-			bool isTerminal();
-			double probability;
-		};
-
 		class DerivationTree
 		{
 		public:
-			std::vector<Derivation> derivations;
+			String derivedString();
+			String roots;
+			std::unordered_map<SymbolPtr, String> successorMap;
 		};
 
-		static DerivationTree Sample(const Derivation& axiom);
+		static DerivationTree Sample(const String& axiom);
 	};
 }
 

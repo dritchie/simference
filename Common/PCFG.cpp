@@ -1,17 +1,18 @@
 #include "PCFG.h"
 #include "Distributions.h"
+#include <stack>
 
 using namespace std;
 
 namespace simference
 {
-	pair<vector<Grammar::Symbol*>, double> Grammar::Variable::unroll()
+	Grammar::String Grammar::Variable::unroll()
 	{
 		// Accumulate the productions that are actually applicable
 		vector<Production*> applicableProds;
 		for (Production p : productions())
 		{
-			if (p.conditionalFunction(this))
+			if (p.conditionalFunction(*this))
 				applicableProds.push_back(&p);
 		}
 
@@ -20,7 +21,7 @@ namespace simference
 		double totalProb = 0.0;
 		for (unsigned int i = 0; i < applicableProds.size(); i++)
 		{
-			double prob = applicableProds[i]->probabilityFunction(this);
+			double prob = applicableProds[i]->probabilityFunction(*this);
 			probs[i] = prob;
 			totalProb += prob;
 		}
@@ -28,50 +29,57 @@ namespace simference
 			probs[i] /= totalProb;
 
 		// Sample one proportional to its probability and use it to unroll
-		Production* prodToUse = applicableProds[(unsigned int)(MultinomialUnivariateDistribution<double>::Sample(probs))];
-		return prodToUse->unrollFunction(this);
+		unsigned int indexToUse = (unsigned int)(MultinomialDistribution<double>::Sample(probs));
+		Production* prodToUse = applicableProds[indexToUse];
+		double probability = probs[indexToUse];
+		auto succData = prodToUse->unrollFunction(*this);
+		succData.logprob += log(probability);
+		return succData;
 	}
 
-	bool Grammar::Derivation::isTerminal()
+	Grammar::String Grammar::DerivationTree::derivedString()
 	{
-		for (Symbol* s : symbols)
+		// Linearize all terminal symbols (DFS order, insert children in reverse order)
+		String derivation;
+		stack<SymbolPtr> fringe;
+		for (auto it = roots.symbols.rbegin(); it != roots.symbols.rend(); it++)
+			fringe.push(*it);
+		while (!fringe.empty())
 		{
-			if (!s->isTerminal()) return false;
-		}
-		return true;
-	}
-
-	Grammar::Derivation Grammar::Derivation::unroll()
-	{
-		vector<Symbol*> nextsymbols;
-		double probAccum = 1.0;
-		for (Symbol* s : symbols)
-		{
-			// If this is a terminal symbol, just copy it over.
+			SymbolPtr s = fringe.top();
+			fringe.pop();
 			if (s->isTerminal())
-				nextsymbols.push_back(s);
-			// Otherwise, unroll the variable and record the probability of doing so.
+				derivation.symbols.push_back(s);
 			else
 			{
-				Variable* var = (Variable*)s;
-				auto nextAndProb = var->unroll();
-				probAccum *= nextAndProb.second;
-				nextsymbols.insert(nextsymbols.end(), nextAndProb.first.begin(), nextAndProb.first.end());
+				const String& succ = successorMap[s];
+				derivation.logprob += succ.logprob;
+				for (auto it = succ.symbols.rbegin(); it != succ.symbols.rend(); it++)
+					fringe.push(*it);
 			}
 		}
-		return Derivation(nextsymbols, this->probability*probAccum);
+		return derivation;
 	}
 
-	Grammar::DerivationTree Grammar::Sample(const Derivation& axiom)
+	Grammar::DerivationTree Grammar::Sample(const String& axiom)
 	{
 		DerivationTree dtree;
-		dtree.derivations.push_back(axiom);
+		dtree.roots = axiom;
+		dtree.roots.logprob = 0.0;
 
-		while(!dtree.derivations.back().isTerminal())
+		stack<SymbolPtr> fringe;
+		for (auto it = dtree.roots.symbols.rbegin(); it != dtree.roots.symbols.rend(); it++)
+			fringe.push(*it);
+		while (!fringe.empty())
 		{
-			dtree.derivations.push_back(dtree.derivations.back().unroll());
-		}
-		
+			SymbolPtr s = fringe.top();
+			fringe.pop();
+			if (!s->isTerminal())
+			{
+				Variable* var = (Variable*)(s.get());
+				dtree.successorMap[s] = var->unroll();
+			}
+		}		
 		return dtree;
 	}
 }
