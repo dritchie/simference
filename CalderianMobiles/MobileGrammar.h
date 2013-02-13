@@ -6,12 +6,6 @@
 
 namespace simference
 {
-	class Renderable
-	{
-	public:
-		virtual void render() = 0;
-	};
-
 	namespace Grammar
 	{
 		/** 
@@ -24,7 +18,7 @@ namespace simference
 			static simference::Math::Probability::TruncatedNormalDistribution<double> stringLength(2.0, 0.5, 0.0, 10.0);
 			static simference::Math::Probability::TruncatedNormalDistribution<double> rodLength(3.0, 1.0, 0.0, 10.0);
 			static simference::Math::Probability::TruncatedNormalDistribution<double> rodConnect(0.5, 0.15, 0.0, 1.0);
-			static simference::Math::Probability::TruncatedNormalDistribution<double> weightMass(0.5, 0.25, 0.0, 10.0);
+			static simference::Math::Probability::TruncatedNormalDistribution<double> weightRadius(0.5, 0.25, 0.0, 10.0);
 			static unsigned int maxDepth = 5;
 
 			class StringEndpointVariable : public Variable
@@ -38,46 +32,29 @@ namespace simference
 				std::string print();
 			};
 
-			class StringTerminal : public Terminal, public Renderable
+			class StringTerminal : public Terminal
 			{
 			public:
 				StringTerminal(double l) : length(l) {}
-				void render();
 				std::string print();
 				double length;
 			};
 
-			class RodTerminal : public Terminal, public Renderable
+			class RodTerminal : public Terminal
 			{
 			public:
 				RodTerminal(double l, double scp) : length(l), stringConnectPoint(scp) {}
-				void render();
 				std::string print();
 				double length;
 				double stringConnectPoint;
 			};
 
-			class WeightTerminal : public Terminal, public Renderable
+			class WeightTerminal : public Terminal
 			{
 			public:
-				WeightTerminal(double m) : mass(m) {}
-				void render();
+				WeightTerminal(double r) : radius(r) {}
 				std::string print();
-				double mass;
-			};
-
-			class BranchBeginTerminal : public Terminal, public Renderable
-			{
-			public:
-				void render();
-				std::string print();
-			};
-
-			class BranchEndTerminal : public Terminal, public Renderable
-			{
-			public:
-				void render();
-				std::string print();
+				double radius;
 			};
 		}
 	}

@@ -1,4 +1,5 @@
 #include "MobileGrammar.h"
+#include "Mobile.h"
 #include <iostream>
 #include <GL/glut.h>
 
@@ -6,10 +7,13 @@ using namespace simference;
 using namespace simference::Grammar;
 using namespace simference::Grammar::SimpleMobileGrammar;
 using namespace std;
+using namespace Eigen;
 
 // Globals (yuck)
 String axiom;
 String derivedString;
+Mobile* mobile = NULL;
+Vector3f anchor(0.0f, 9.5f, 0.0f);
 
 void reshape(int w, int h)
 {
@@ -24,12 +28,9 @@ void display()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	glTranslatef(0.0f, 9.5f, 0.0f);
-	for (SymbolPtr s : derivedString.symbols)
-	{
-		Renderable* rt = dynamic_cast<Renderable*>(s.get());
-		rt->render();
-	}
+
+	if (mobile)
+		mobile->render();
 
 	glutSwapBuffers();
 }
@@ -45,6 +46,8 @@ void keyboard(unsigned char key, int x, int y)
 		//for (SymbolPtr s : derivedString.symbols)
 		//	cout << s->print().c_str();
 		//cout << endl;
+		if (mobile) delete mobile;
+		mobile = new Mobile(derivedString, anchor);
 		needsRedisplay = true;
 		break;
 	}

@@ -28,9 +28,9 @@ namespace simference
 					[](const Variable& v)
 					{
 						vector<SymbolPtr> s;
-						double mass = SimpleMobileGrammar::weightMass.sample();
-						s.push_back(SymbolPtr(new WeightTerminal(mass)));
-						return String(s, weightMass.logprob(mass));
+						double radius = SimpleMobileGrammar::weightRadius.sample();
+						s.push_back(SymbolPtr(new WeightTerminal(radius)));
+						return String(s, weightRadius.logprob(radius));
 					}
 				));
 				// 2) Stick a rod, plus the beginnings of its two branches, onto the end of this string
@@ -55,15 +55,11 @@ namespace simference
 						// Rod
 						s.push_back(SymbolPtr(new RodTerminal(rodLen, rodLen*rodConn)));
 						// Left branch
-						s.push_back(SymbolPtr(new BranchBeginTerminal));
-							s.push_back(SymbolPtr(new StringTerminal(leftStringLength)));
-							s.push_back(SymbolPtr(new StringEndpointVariable(sev->depth+1)));
-						s.push_back(SymbolPtr(new BranchEndTerminal));
+						s.push_back(SymbolPtr(new StringTerminal(leftStringLength)));
+						s.push_back(SymbolPtr(new StringEndpointVariable(sev->depth+1)));
 						// Right branch
-						s.push_back(SymbolPtr(new BranchBeginTerminal));
-							s.push_back(SymbolPtr(new StringTerminal(rightStringLength)));
-							s.push_back(SymbolPtr(new StringEndpointVariable(sev->depth+1)));
-						s.push_back(SymbolPtr(new BranchEndTerminal));
+						s.push_back(SymbolPtr(new StringTerminal(rightStringLength)));
+						s.push_back(SymbolPtr(new StringEndpointVariable(sev->depth+1)));
 						return String(s, rodLength.logprob(rodLen) + rodConnect.logprob(rodConn) +
 							stringLength.logprob(leftStringLength) + stringLength.logprob(rightStringLength));
 					}
@@ -72,33 +68,11 @@ namespace simference
 			};
 			vector<Production> StringEndpointVariable::productionList = StringEndpointVariable::InitProductionList();
 
-			#define SET_STRING_COLOR (glColor3f(0.5f, 0.5f, 0.5f))
-			#define SET_ROD_COLOR (glColor3f(0.2f, 0.2f, 0.2f))
-			#define SET_WEIGHT_COLOR (glColor3f(0.2f, 0.2f, 1.0f))
-			#define STRING_WIDTH 1.0f
-			#define ROD_WIDTH 3.0f
-			#define WEIGHT_SLICES 16
-
 			string StringEndpointVariable::print()
 			{
 				char buf[64];
 				sprintf(buf, "SVar(%u)", depth);
 				return string(buf);
-			}
-
-			void StringTerminal::render()
-			{
-				// Draw a line
-				glLineWidth(STRING_WIDTH);
-				SET_STRING_COLOR;
-				glMatrixMode(GL_MODELVIEW);
-				glBegin(GL_LINES);
-					glVertex2f(0.0f, 0.0f);
-					glVertex2f(0.0f, -this->length);
-				glEnd();
-
-				// Move down to the bottom of the string
-				glTranslatef(0.0f, -this->length, 0.0f);
 			}
 
 			string StringTerminal::print()
@@ -108,26 +82,6 @@ namespace simference
 				return string(buf);
 			}
 
-			void RodTerminal::render()
-			{
-				// Draw a rod
-				glLineWidth(ROD_WIDTH);
-				SET_ROD_COLOR;
-				glMatrixMode(GL_MODELVIEW);
-				glBegin(GL_LINES);
-					glVertex2f(-stringConnectPoint, 0.0f);
-					glVertex2f(length-stringConnectPoint, 0.0f);
-				glEnd();
-
-				// Push transformation for right branch
-				glPushMatrix();
-				glTranslatef(-stringConnectPoint, 0.0f, 0.0f);
-
-				// Push transformation for left branch
-				glPushMatrix();
-				glTranslatef(length, 0.0f, 0.0f);
-			}
-
 			string RodTerminal::print()
 			{
 				char buf[64];
@@ -135,44 +89,11 @@ namespace simference
 				return string(buf);
 			}
 
-			void WeightTerminal::render()
-			{
-				// Push down by the size (which is interpreted as radius)
-				glTranslatef(0.0f, -mass, 0.0f);
-
-				// Squish along z so we can render in '2d'
-				glScalef(1.0f, 1.0f, 0.01f);
-
-				// Draw a weight as a sphere
-				SET_WEIGHT_COLOR;
-				glutSolidSphere(mass, WEIGHT_SLICES, WEIGHT_SLICES);
-			}
-
 			string WeightTerminal::print()
 			{
 				char buf[64];
-				sprintf(buf, "Weight(%g)", mass);
+				sprintf(buf, "Weight(%g)", radius);
 				return string(buf);
-			}
-
-			void BranchBeginTerminal::render()
-			{
-			}
-
-			string BranchBeginTerminal::print()
-			{
-				return "[";
-			}
-
-			void BranchEndTerminal::render()
-			{
-				glMatrixMode(GL_MODELVIEW);
-				glPopMatrix();
-			}
-
-			string BranchEndTerminal::print()
-			{
-				return "]";
 			}
 		}
 	}

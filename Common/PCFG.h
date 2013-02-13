@@ -15,6 +15,8 @@ namespace simference
 		public:
 			virtual bool isTerminal() = 0;
 			virtual std::string print() = 0;
+			template<class T> bool is() { return dynamic_cast<T*>(this) != NULL; }
+			template<class T> T* as() { return dynamic_cast<T*>(this); }
 		};
 
 		typedef std::shared_ptr<Symbol> SymbolPtr;
