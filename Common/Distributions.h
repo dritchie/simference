@@ -1,6 +1,7 @@
 #ifndef __DISTRIBUTIONS_H
 #define __DISTRIBUTIONS_H
 
+#include "Math.h"
 #include <stdlib.h>
 #include <vector>
 #include <limits>
@@ -9,22 +10,6 @@ namespace simference
 {
 	namespace Math
 	{
-		static double Pi = 3.141592654;
-		static double TwoPi = 2*Pi;
-
-		template<typename T>
-		T signum(T x)
-		{
-			T zero = (T)0.0;
-			if (x == zero)
-				return zero;
-			else if (x < zero)
-				return (T)-1.0;
-			else if (x > zero)
-				return (T)1.0;
-			else return x;		// NaN
-		}
-
 		namespace Probability
 		{
 			template<typename T>

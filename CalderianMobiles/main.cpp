@@ -38,19 +38,35 @@ void display()
 void keyboard(unsigned char key, int x, int y)
 {
 	bool needsRedisplay = false;
-	switch (key)
+
+	if (key == 's')
 	{
-	case 'n':
 		auto dtree = Sample(axiom);
 		derivedString = dtree.derivedString();
-		//for (SymbolPtr s : derivedString.symbols)
-		//	cout << s->print().c_str();
-		//cout << endl;
 		if (mobile) delete mobile;
 		mobile = new Mobile(derivedString, anchor);
+
 		needsRedisplay = true;
-		break;
 	}
+	else if (key == 'c')
+	{
+		if (mobile)
+		{
+			auto record = mobile->checkStaticCollisions();
+			record.print();
+		}
+	}
+	else if (key == 'a')
+	{
+		if (mobile)
+			cout << "Ancestor/descendant sanity check passed: " << mobile->sanityCheckNodeCodes() << endl;
+	}
+	else if (key == 'n')
+	{
+		if (mobile)
+			mobile->printNodeCodes();
+	}
+
 	if (needsRedisplay)
 		glutPostRedisplay();
 }
@@ -68,7 +84,7 @@ int main(int argc, char** argv)
 	glutKeyboardFunc(keyboard);
 
 	// We start with a single string (the string from which everything hangs)
-	axiom.symbols.push_back(SymbolPtr(new StringTerminal(2.0)));
+	axiom.symbols.push_back(SymbolPtr(new StringTerminal(2.0, 0)));
 	axiom.symbols.push_back(SymbolPtr(new StringEndpointVariable(0)));
 
 	glutMainLoop();

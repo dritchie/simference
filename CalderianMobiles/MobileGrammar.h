@@ -35,9 +35,10 @@ namespace simference
 			class StringTerminal : public Terminal
 			{
 			public:
-				StringTerminal(double l) : length(l) {}
+				StringTerminal(double l, unsigned int id) : length(l), index(id) {}
 				std::string print();
 				double length;
+				unsigned int index;
 			};
 
 			class RodTerminal : public Terminal

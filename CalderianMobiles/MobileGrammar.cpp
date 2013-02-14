@@ -55,10 +55,10 @@ namespace simference
 						// Rod
 						s.push_back(SymbolPtr(new RodTerminal(rodLen, rodLen*rodConn)));
 						// Left branch
-						s.push_back(SymbolPtr(new StringTerminal(leftStringLength)));
+						s.push_back(SymbolPtr(new StringTerminal(leftStringLength, 0)));
 						s.push_back(SymbolPtr(new StringEndpointVariable(sev->depth+1)));
 						// Right branch
-						s.push_back(SymbolPtr(new StringTerminal(rightStringLength)));
+						s.push_back(SymbolPtr(new StringTerminal(rightStringLength, 1)));
 						s.push_back(SymbolPtr(new StringEndpointVariable(sev->depth+1)));
 						return String(s, rodLength.logprob(rodLen) + rodConnect.logprob(rodConn) +
 							stringLength.logprob(leftStringLength) + stringLength.logprob(rightStringLength));
