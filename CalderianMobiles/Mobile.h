@@ -84,6 +84,7 @@ namespace simference
 
 			void render();
 			double mass();
+			Eigen::Vector3f torque();
 			unsigned int numChildren() { return 2; }
 			Component* firstChild() { return leftChild.get(); }
 			Component* secondChild() { return rightChild.get(); }

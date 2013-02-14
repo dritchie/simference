@@ -66,6 +66,11 @@ void keyboard(unsigned char key, int x, int y)
 		if (mobile)
 			mobile->printNodeCodes();
 	}
+	else if (key == 't')
+	{
+		if (mobile)
+			cout << "Sum of rod torque norms: " << mobile->netTorqueNorm() << endl;
+	}
 
 	if (needsRedisplay)
 		glutPostRedisplay();

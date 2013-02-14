@@ -1,6 +1,7 @@
 #include "Mobile.h"
 #include "MobileGrammar.h"
 #include "../Common/Math.h"
+#include <Eigen/Geometry>
 #include <algorithm>
 #include <queue>
 #include <iostream>
@@ -222,8 +223,13 @@ namespace simference
 
 	double Mobile::netTorqueNorm()
 	{
-		// TODO: Fill in!
-		return 0.0;
+		double accum = 0.0;
+		auto rods = nodesOfType<RodComponent>();
+		for (auto rod : rods)
+		{
+			accum += rod->torque().norm();
+		}
+		return accum;
 	}
 
 
@@ -240,7 +246,8 @@ namespace simference
 	#define RADIAL_SLICES 16
 	#define STRING_DENSITY 1.0
 	#define ROD_DENSITY 2.0
-	#define WEIGHT_DENSITY 4.0
+	#define WEIGHT_DENSITY 3.0
+	#define GRAVITY Vector3f(0.0f, -9.8f, 0.0)
 
 	void Mobile::StringComponent::render()
 	{
@@ -257,8 +264,9 @@ namespace simference
 
 	double Mobile::StringComponent::mass()
 	{
-		// TODO: Fill in!
-		return 0.0;
+		// Volume: pi r^2 l
+		return STRING_RADIUS*STRING_RADIUS * Math::Pi * length * STRING_DENSITY
+			+ child->mass();
 	}
 
 	void Mobile::WeightComponent::render()
@@ -277,8 +285,8 @@ namespace simference
 
 	double Mobile::WeightComponent::mass()
 	{
-		// TODO: Fill in!
-		return 0.0;
+		// Volume = 4/3 pi r^3
+		return 1.3333 * Math::Pi * radius*radius*radius * WEIGHT_DENSITY;
 	}
 
 	double Mobile::WeightComponent::collision(StringComponent* str)
@@ -332,8 +340,20 @@ namespace simference
 
 	double Mobile::RodComponent::mass()
 	{
-		// TODO: Fill in!
-		return 0.0;
+		// Volume: pi r^2 l
+		return ROD_RADIUS*ROD_RADIUS * Math::Pi * length * ROD_DENSITY
+			+ leftChild->mass() + rightChild->mass();
+	}
+
+	Vector3f Mobile::RodComponent::torque()
+	{
+		Vector3f lp = pivot; lp.x() -= stringConnectPoint;
+		Vector3f rp = lp; rp.x() += length;
+		Vector3f d1 = lp - pivot;
+		Vector3f d2 = rp - pivot;
+		Vector3f f1 = leftChild->mass() * GRAVITY;
+		Vector3f f2 = rightChild->mass() * GRAVITY;
+		return d1.cross(f1) + d2.cross(f2);
 	}
 
 	double Mobile::RodComponent::collision(RodComponent* rod)
