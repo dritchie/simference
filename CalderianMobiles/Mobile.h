@@ -4,6 +4,9 @@
 #include <Eigen/Core>
 #include <memory>
 
+// Forward declaration
+class GLUquadric;
+
 namespace simference
 {
 	// Forward declaration
@@ -15,8 +18,6 @@ namespace simference
 	class Mobile
 	{
 	public:
-		Mobile(Grammar::String derivation, const Eigen::Vector3f& anchor);
-		void render();
 
 		class Component
 		{
@@ -53,17 +54,34 @@ namespace simference
 		class RodComponent : public Component
 		{
 		public:
-			RodComponent(const Eigen::Vector3f& p, ComponentPtr lc, ComponentPtr rc)
-				: pivot(p), leftChild(lc), rightChild(rc) {}
+			RodComponent(const Eigen::Vector3f& p, double l, ComponentPtr lc, ComponentPtr rc)
+				: pivot(p), length(l), leftChild(lc), rightChild(rc) {}
 			void render();
 			double mass();
 			Eigen::Vector3f pivot;
+			double length;
 			ComponentPtr leftChild;
 			ComponentPtr rightChild;
 		};
 
+		class CollisionSummary
+		{
+		public:
+			CollisionSummary()
+				: rodXrod(0.0), rodXstring(0.0), rodXweight(0.0), weightXstring(0.0), weightXweight(0.0) {}
+			double rodXrod, rodXstring, rodXweight,
+				weightXstring, weightXweight;
+		};
+
+
+		Mobile(Grammar::String derivation, const Eigen::Vector3f& anchor);
+		void render();
+		CollisionSummary checkStaticCollisions();
+		double netTorqueNorm();
+
 	private:
 		ComponentPtr root;
+		static GLUquadric* quadric;
 	};
 }
 

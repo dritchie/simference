@@ -31,7 +31,7 @@ namespace simference
 				auto rt = head->as<RodTerminal>();
 				Vector3f leftPoint = point - Vector3f(rt->stringConnectPoint, 0.0f, 0.0f);
 				Vector3f rightPoint = point + Vector3f(rt->length - rt->stringConnectPoint, 0.0f, 0.0f);
-				return ComponentPtr(new RodComponent(point, helper(leftPoint), helper(rightPoint)));
+				return ComponentPtr(new RodComponent(point, rt->length, helper(leftPoint), helper(rightPoint)));
 			}
 			else throw "Mobile::Mobile - Malformed input string!";
 		};
@@ -40,37 +40,63 @@ namespace simference
 		root = helper(anchor);
 	}
 
+	GLUquadric* Mobile::quadric = gluNewQuadric();
+
 	void Mobile::render()
 	{
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+
+		// Squish along z so we can render in '2d'
+		glScalef(1.0f, 1.0f, 0.01f);
+
 		root->render();
+
+		glPopMatrix();
 	}
 
-	// Render constants
+	Mobile::CollisionSummary Mobile::checkStaticCollisions()
+	{
+		CollisionSummary summary;
+
+		// TODO: Fill in!
+
+		return summary;
+	}
+
+	double Mobile::netTorqueNorm()
+	{
+		// TODO: Fill in!
+		return 0.0;
+	}
+
+	// Rendering and simulation constants
 	#define SET_STRING_COLOR (glColor3f(0.5f, 0.5f, 0.5f))
 	#define SET_ROD_COLOR (glColor3f(0.2f, 0.2f, 0.2f))
 	#define SET_WEIGHT_COLOR (glColor3f(0.2f, 0.2f, 1.0f))
-	#define STRING_WIDTH 1.0f
-	#define ROD_WIDTH 3.0f
-	#define WEIGHT_SLICES 16
-
-	// Simulation constants
-	// TODO: Define these
+	#define STRING_RADIUS 0.02
+	#define ROD_RADIUS 0.05
+	#define RADIAL_SLICES 16
+	#define STRING_DENSITY 1.0
+	#define ROD_DENSITY 2.0
+	#define WEIGHT_DENSITY 4.0
 
 	void Mobile::StringComponent::render()
 	{
-		glLineWidth(STRING_WIDTH);
 		SET_STRING_COLOR;
 		glMatrixMode(GL_MODELVIEW);
-		glBegin(GL_LINES);
-		glVertex2f(anchor.x(), anchor.y());
-		glVertex2f(anchor.x(), anchor.y() - length);
-		glEnd();
+		glPushMatrix();
+		glTranslatef(anchor.x(), anchor.y(), anchor.z());
+		glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+		gluCylinder(quadric, STRING_RADIUS, STRING_RADIUS, length, RADIAL_SLICES, 1);
+		glPopMatrix();
 
 		child->render();
 	}
 
 	double Mobile::StringComponent::mass()
 	{
+		// TODO: Fill in!
 		return 0.0;
 	}
 
@@ -82,34 +108,30 @@ namespace simference
 		// Push down by the radius
 		glTranslatef(anchor.x(), anchor.y()-radius, anchor.z());
 
-		// Squish along z so we can render in '2d'
-		glScalef(1.0f, 1.0f, 0.01f);
-
 		// Draw a weight as a sphere
 		SET_WEIGHT_COLOR;
-		glutSolidSphere(radius, WEIGHT_SLICES, WEIGHT_SLICES);
-
+		glutSolidSphere(radius, RADIAL_SLICES, RADIAL_SLICES);
 		glPopMatrix();
 	}
 
 	double Mobile::WeightComponent::mass()
 	{
+		// TODO: Fill in!
 		return 0.0;
 	}
 
 	void Mobile::RodComponent::render()
 	{
 		const Eigen::Vector3f& lp = leftChild->as<StringComponent>()->anchor;
-		const Eigen::Vector3f& rp = rightChild->as<StringComponent>()->anchor;
 
 		// Draw a rod
-		glLineWidth(ROD_WIDTH);
 		SET_ROD_COLOR;
 		glMatrixMode(GL_MODELVIEW);
-		glBegin(GL_LINES);
-		glVertex2f(lp.x(), lp.y());
-		glVertex2f(rp.x(), rp.y());
-		glEnd();
+		glPushMatrix();
+		glTranslatef(lp.x(), lp.y(), lp.z());
+		glRotatef(90.0f, 0.0f, 1.0f, 0.0f);
+		gluCylinder(quadric, ROD_RADIUS, ROD_RADIUS, length, RADIAL_SLICES, 1);
+		glPopMatrix();
 
 		leftChild->render();
 		rightChild->render();
@@ -117,6 +139,7 @@ namespace simference
 
 	double Mobile::RodComponent::mass()
 	{
+		// TODO: Fill in!
 		return 0.0;
 	}
 }
