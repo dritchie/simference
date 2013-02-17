@@ -2,6 +2,8 @@
 #include <stan/gm/command.hpp>
 #include <stan/prob/distributions/univariate/continuous/normal.hpp>
 
+#include <fstream>
+
 using namespace std;
 using namespace stan;
 
@@ -35,8 +37,22 @@ int main(int argc, char** argv)
 	vector<double> params_r(1, 0.0);
 	vector<int> params_i;
 
-	// Sample from the model
-	gm::sample_from(sampler, true, 0, 2000, 100, 0, false, cout, params_r, params_i, m);
+	// Open up a CSV file for output writing.
+	ofstream outfile("samples.csv");
 
+	// Sample from the model
+	gm::sample_from(sampler,	// The sampler to use
+					true,		// Whether to use adaptation to find the best step size epsilon
+					0,			// How many iterations to take in between printing updates to the console
+					2000,		// Number of iterations to run the sampler for
+					100,		// 'num_warmup' , which I assume means the number of burn-in iterations
+					1,			// 'num_thin' -- has to do with how many itermediate samples we discard between kept ones
+					false,		// 'save_warmup' -- whether the samples generated during burn-in should be saved
+					outfile,	// The file stream where sample output should be written
+					params_r,	// Real-valued parameters for the model -- these are the inital values
+					params_i,	// Integer-valued parameters -- these are the initial values
+					m);			// The model being sampled from
+
+	outfile.close();
 	return 0;
 }
