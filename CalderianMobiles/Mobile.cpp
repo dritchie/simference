@@ -23,22 +23,24 @@ namespace simference
 			if (head->is<StringTerminal>())
 			{
 				auto st = head->as<StringTerminal>();
-				double length = st->length;
+				double length = st->params[0];
 				auto stringcomp = new StringComponent(point, length, code, st->index, 2);
 				stringcomp->child = helper(point - Vector3f(0.0f, length, 0.0f), &stringcomp->code);
 				return ComponentPtr(stringcomp);
 			}
 			else if (head->is<WeightTerminal>())
 			{
-				double radius = head->as<WeightTerminal>()->radius;
+				double radius = head->as<WeightTerminal>()->params[0];
 				return ComponentPtr(new WeightComponent(point, radius, code, 0, 1));
 			}
 			else if (head->is<RodTerminal>())
 			{
 				auto rt = head->as<RodTerminal>();
-				Vector3f leftPoint = point - Vector3f(rt->stringConnectPoint, 0.0f, 0.0f);
-				Vector3f rightPoint = point + Vector3f(rt->length - rt->stringConnectPoint, 0.0f, 0.0f);
-				auto rodcomp = new RodComponent(point, rt->length, rt->stringConnectPoint, code, 0, 1);
+				double rLength = rt->params[0];
+				double rConnectPoint = rt->params[1];
+				Vector3f leftPoint = point - Vector3f(rConnectPoint, 0.0f, 0.0f);
+				Vector3f rightPoint = point + Vector3f(rLength - rConnectPoint, 0.0f, 0.0f);
+				auto rodcomp = new RodComponent(point, rLength, rConnectPoint, code, 0, 1);
 				rodcomp->leftChild = helper(leftPoint, &rodcomp->code);
 				rodcomp->rightChild = helper(rightPoint, &rodcomp->code);
 				return ComponentPtr(rodcomp);

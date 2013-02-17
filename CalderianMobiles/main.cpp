@@ -89,7 +89,9 @@ int main(int argc, char** argv)
 	glutKeyboardFunc(keyboard);
 
 	// We start with a single string (the string from which everything hangs)
-	axiom.symbols.push_back(SymbolPtr(new StringTerminal(2.0, 0)));
+	auto root = new StringTerminal(0);
+	root->params[0] = 2.0;
+	axiom.symbols.push_back(SymbolPtr(root));
 	axiom.symbols.push_back(SymbolPtr(new StringEndpointVariable(0)));
 
 	glutMainLoop();

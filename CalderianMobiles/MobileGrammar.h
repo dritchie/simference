@@ -17,7 +17,7 @@ namespace simference
 			// Parameters
 			static simference::Math::Probability::TruncatedNormalDistribution<double> stringLength(2.0, 0.5, 0.0, 10.0);
 			static simference::Math::Probability::TruncatedNormalDistribution<double> rodLength(3.0, 1.0, 0.0, 10.0);
-			static simference::Math::Probability::TruncatedNormalDistribution<double> rodConnect(0.5, 0.15, 0.0, 1.0);
+			static simference::Math::Probability::TruncatedNormalDistribution<double> rodConnect(1.5, 0.45, 0.0, 3.0);
 			static simference::Math::Probability::TruncatedNormalDistribution<double> weightRadius(0.5, 0.25, 0.0, 10.0);
 			static unsigned int maxDepth = 5;
 
@@ -29,33 +29,32 @@ namespace simference
 				static std::vector<Production> productionList;
 				static std::vector<Production> InitProductionList();
 				const std::vector<Production>& productions() { return productionList; }
-				std::string print();
+				void print(std::ostream& outstream) { outstream << "SVar(" << depth << ")"; }
 			};
 
-			class StringTerminal : public Terminal
+			class StringTerminal : public GeneralTerminal<1>
 			{
 			public:
-				StringTerminal(double l, unsigned int id) : length(l), index(id) {}
-				std::string print();
-				double length;
+				StringTerminal(unsigned int id) : GeneralTerminal(distribs), index(id) {}
+				char* name() { return "String"; }
+				static DistribPtr distribs[1];
 				unsigned int index;
 			};
 
-			class RodTerminal : public Terminal
+			class RodTerminal : public GeneralTerminal<2>
 			{
 			public:
-				RodTerminal(double l, double scp) : length(l), stringConnectPoint(scp) {}
-				std::string print();
-				double length;
-				double stringConnectPoint;
+				RodTerminal() : GeneralTerminal(distribs) {}
+				char* name() { return "Rod"; }
+				static DistribPtr distribs[2];
 			};
 
-			class WeightTerminal : public Terminal
+			class WeightTerminal : public GeneralTerminal<1>
 			{
 			public:
-				WeightTerminal(double r) : radius(r) {}
-				std::string print();
-				double radius;
+				WeightTerminal() : GeneralTerminal(distribs) {}
+				char* name() { return "Weight"; }
+				static DistribPtr distribs[1];
 			};
 		}
 	}

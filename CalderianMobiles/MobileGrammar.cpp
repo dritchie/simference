@@ -28,9 +28,8 @@ namespace simference
 					[](const Variable& v)
 					{
 						vector<SymbolPtr> s;
-						double radius = SimpleMobileGrammar::weightRadius.sample();
-						s.push_back(SymbolPtr(new WeightTerminal(radius)));
-						return String(s, weightRadius.logprob(radius));
+						s.push_back(SymbolPtr(new WeightTerminal));
+						return s;
 					}
 				));
 				// 2) Stick a rod, plus the beginnings of its two branches, onto the end of this string
@@ -48,53 +47,37 @@ namespace simference
 					{
 						StringEndpointVariable* sev = (StringEndpointVariable*)(&v);
 						vector<SymbolPtr> s;
-						double rodLen = rodLength.sample();
-						double rodConn = rodConnect.sample();
-						double leftStringLength = stringLength.sample();
-						double rightStringLength = stringLength.sample();
 						// Rod
-						s.push_back(SymbolPtr(new RodTerminal(rodLen, rodLen*rodConn)));
+						s.push_back(SymbolPtr(new RodTerminal));
 						// Left branch
-						s.push_back(SymbolPtr(new StringTerminal(leftStringLength, 0)));
+						s.push_back(SymbolPtr(new StringTerminal(0)));
 						s.push_back(SymbolPtr(new StringEndpointVariable(sev->depth+1)));
 						// Right branch
-						s.push_back(SymbolPtr(new StringTerminal(rightStringLength, 1)));
+						s.push_back(SymbolPtr(new StringTerminal(1)));
 						s.push_back(SymbolPtr(new StringEndpointVariable(sev->depth+1)));
-						return String(s, rodLength.logprob(rodLen) + rodConnect.logprob(rodConn) +
-							stringLength.logprob(leftStringLength) + stringLength.logprob(rightStringLength));
+						return s;
 					}
 				));
 				return p;
 			};
 			vector<Production> StringEndpointVariable::productionList = StringEndpointVariable::InitProductionList();
 
-			string StringEndpointVariable::print()
-			{
-				char buf[64];
-				sprintf(buf, "SVar(%u)", depth);
-				return string(buf);
-			}
 
-			string StringTerminal::print()
-			{
-				char buf[64];
-				sprintf(buf, "String(%g)", length);
-				return string(buf);
-			}
 
-			string RodTerminal::print()
+			DistribPtr StringTerminal::distribs[1] =
 			{
-				char buf[64];
-				sprintf(buf, "Rod(%g, %g)", length, stringConnectPoint);
-				return string(buf);
-			}
+				&stringLength
+			};
 
-			string WeightTerminal::print()
+			DistribPtr RodTerminal::distribs[2] =
 			{
-				char buf[64];
-				sprintf(buf, "Weight(%g)", radius);
-				return string(buf);
-			}
+				&rodLength, &rodConnect
+			};
+
+			DistribPtr WeightTerminal::distribs[1] =
+			{
+				&weightRadius
+			};
 		}
 	}
 }

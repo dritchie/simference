@@ -1,5 +1,4 @@
 #include "PCFG.h"
-#include "Distributions.h"
 #include <stack>
 
 using namespace std;
@@ -8,6 +7,36 @@ namespace simference
 {
 	namespace Grammar
 	{
+		double String::paramLogProb()
+		{
+			double lp = 0.0;
+			for (auto sym : symbols)
+			{
+				if (sym->isTerminal())
+					lp += sym->as<Terminal>()->paramLogProb();
+			}
+			return lp;
+		}
+
+		void String::getParams(vector<double>& p)
+		{
+			for (auto sym : symbols)
+			{
+				if (sym->isTerminal())
+					sym->as<Terminal>()->getParams(p);
+			}
+		}
+
+		void String::setParams(const std::vector<double>& p)
+		{
+			auto it = p.begin();
+			for (auto sym : symbols)
+			{
+				if (sym->isTerminal())
+					sym->as<Terminal>()->setParams(it);
+			}
+		}
+
 		String Variable::unroll()
 		{
 			// Accumulate the productions that are actually applicable
@@ -35,9 +64,8 @@ namespace simference
 			unsigned int indexToUse = (unsigned int)(Math::Probability::MultinomialDistribution<double>::Sample(probs));
 			const Production& prodToUse = prods[applicableProds[indexToUse]];
 			double probability = probs[indexToUse];
-			auto succData = prodToUse.unrollFunction(*this);
-			succData.logprob += log(probability);
-			return succData;
+			auto symbols = prodToUse.unrollFunction(*this);
+			return String(symbols, log(probability));
 		}
 
 		String DerivationTree::derivedString()
