@@ -4,16 +4,16 @@
 #include <GL/glut.h>
 
 using namespace simference;
-using namespace simference::Grammar;
-using namespace simference::Grammar::SimpleMobileGrammar;
 using namespace std;
 using namespace Eigen;
 
+typedef double RealNum;
+
 // Globals (yuck)
-String axiom;
-String derivedString;
-Mobile* mobile = NULL;
-Vector3f anchor(0.0f, 9.5f, 0.0f);
+String<RealNum> axiom;
+String<RealNum> derivedString;
+Mobile<RealNum>* mobile = NULL;
+Mobile<RealNum>::Vector3r anchor(0.0, 9.5, 0.0);
 
 void reshape(int w, int h)
 {
@@ -44,7 +44,7 @@ void keyboard(unsigned char key, int x, int y)
 		auto dtree = Sample(axiom);
 		derivedString = dtree.derivedString();
 		if (mobile) delete mobile;
-		mobile = new Mobile(derivedString, anchor);
+		mobile = new Mobile<RealNum>(derivedString, anchor);
 
 		needsRedisplay = true;
 	}
@@ -89,10 +89,10 @@ int main(int argc, char** argv)
 	glutKeyboardFunc(keyboard);
 
 	// We start with a single string (the string from which everything hangs)
-	auto root = new StringTerminal(0);
+	auto root = new StringTerminal<RealNum>(0);
 	root->params[0] = 2.0;
 	axiom.symbols.push_back(SymbolPtr(root));
-	axiom.symbols.push_back(SymbolPtr(new StringEndpointVariable(0)));
+	axiom.symbols.push_back(SymbolPtr(new StringEndpointVariable<RealNum>(0)));
 
 	glutMainLoop();
 
