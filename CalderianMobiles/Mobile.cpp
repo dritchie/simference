@@ -1,5 +1,4 @@
 #include "Mobile.h"
-#include <stan/agrad/agrad.hpp>
 
 using namespace std;
 using namespace Eigen;

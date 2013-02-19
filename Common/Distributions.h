@@ -12,17 +12,17 @@ namespace simference
 	{
 		namespace Probability
 		{
-			template<typename T>
+			template<typename ProbType, typename ValType = ProbType>
 			class Distribution
 			{
 			public:
-				virtual T prob(T val) = 0;
-				T logprob(T val) { return (T)log(prob(val)); }
-				virtual T sample() = 0;
+				virtual ProbType prob(ValType val) = 0;
+				ProbType logprob(ValType val) { return (ProbType)log(prob(val)); }
+				virtual ValType sample() = 0;
 			};
 
 			template<typename T>
-			class UniformDistribution : public Distribution<T>
+			class UniformDistribution : public Distribution<T, T>
 			{
 			public:
 				UniformDistribution(T minv = (T)0.0, T maxv = (T)1.0)
@@ -41,13 +41,13 @@ namespace simference
 			};
 
 			template<typename T>
-			class MultinomialDistribution : public Distribution<T>
+			class MultinomialDistribution : public Distribution<T, unsigned int>
 			{
 			public:
 				MultinomialDistribution(const std::vector<T>& params)
 					: parameters(params) {}
 				static T Prob(unsigned int val, const std::vector<T>& params) { return params[val]; } 
-				static T Sample(const std::vector<T>& params)
+				static unsigned int Sample(const std::vector<T>& params)
 				{
 					unsigned int result = 0;
 					T x = UniformDistribution<T>::Sample();
@@ -60,14 +60,14 @@ namespace simference
 					}
 					return result;
 				}
-				T prob(T val) { return Prob((unsigned int)val, parameters); }
-				T sample() { return Sample(parameters); }
+				T prob(unsigned int val) { return Prob(val, parameters); }
+				unsigned int sample() { return Sample(parameters); }
 			private:
 				std::vector<T> parameters;
 			};
 
 			template<typename T>
-			class NormalDistribution : public Distribution<T>
+			class NormalDistribution : public Distribution<T, T>
 			{
 			public:
 				NormalDistribution(T mu = (T)0.0, T sigma = (T)1.0)
@@ -127,7 +127,7 @@ namespace simference
 			}
 
 			template<typename T>
-			class TruncatedNormalDistribution : public Distribution<T>
+			class TruncatedNormalDistribution : public Distribution<T, T>
 			{
 			public:
 				TruncatedNormalDistribution(T mu, T sigma, T lo, T hi)

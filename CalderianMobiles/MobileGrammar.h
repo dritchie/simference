@@ -12,60 +12,74 @@ namespace simference
 			template <typename RealNum>
 			class Parameters
 			{
+			private:
+				Parameters() :
+					stringLength(2.0, 0.5, 0.0, 10.0),
+					rodLength(3.0, 1.0, 0.0, 10.0),
+					rodConnect(1.5, 0.45, 0.0, 3.0),
+					weightRadius(0.5, 0.25, 0.0, 10.0),
+					maxDepth(5) {}
+				static Parameters<RealNum>* instance;
+
 			public:
-				static TruncatedNormalDistribution<RealNum> stringLength;
-				static TruncatedNormalDistribution<RealNum> rodLength;
-				static TruncatedNormalDistribution<RealNum> rodConnect;
-				static TruncatedNormalDistribution<RealNum> weightRadius;
-				static unsigned int maxDepth;
+				TruncatedNormalDistribution<RealNum> stringLength;
+				TruncatedNormalDistribution<RealNum> rodLength;
+				TruncatedNormalDistribution<RealNum> rodConnect;
+				TruncatedNormalDistribution<RealNum> weightRadius;
+				unsigned int maxDepth;
+				static Parameters* Instance() { if (instance == NULL) instance = new Parameters<RealNum>; return instance;}
 			};
-			template<typename RealNum>
-			TruncatedNormalDistribution<RealNum> Parameters<RealNum>::stringLength(2.0, 0.5, 0.0, 10.0);
-			template<typename RealNum>
-			TruncatedNormalDistribution<RealNum> Parameters<RealNum>::rodLength(3.0, 1.0, 0.0, 10.0);
-			template<typename RealNum>
-			TruncatedNormalDistribution<RealNum> Parameters<RealNum>::rodConnect(1.5, 0.45, 0.0, 3.0);
-			template<typename RealNum>
-			TruncatedNormalDistribution<RealNum> Parameters<RealNum>::weightRadius(0.5, 0.25, 0.0, 10.0);
-			template<typename RealNum>
-			unsigned int Parameters<RealNum>::maxDepth = 5;
+			template <typename RealNum> Parameters<RealNum>* Parameters<RealNum>::instance = NULL;
 
 			template <typename RealNum>
 			class StringTerminal : public GeneralTerminal<RealNum, 1>
 			{
 			public:
-				StringTerminal(unsigned int id) : GeneralTerminal(distribs), index(id) {}
+				StringTerminal(unsigned int id) : GeneralTerminal(GetDistribs()), index(id) {}
 				char* name() { return "String"; }
 				unsigned int index;
 				static Distribution<RealNum>* distribs[1];
+				static Distribution<RealNum>** GetDistribs()
+				{
+					if (distribs[0] == NULL) { distribs[0] = &Parameters<RealNum>::Instance()->stringLength; }
+					return distribs;
+				}
 			};
-			template<typename RealNum>
-			Distribution<RealNum>* StringTerminal<RealNum>::distribs[1] = { &Parameters<RealNum>::stringLength };
-
+			template <typename RealNum> Distribution<RealNum>* StringTerminal<RealNum>::distribs[1] = {NULL};
 			enum StringTerminalParamIndices { StringLength = 0 };
 
 			template <typename RealNum>
 			class RodTerminal : public GeneralTerminal<RealNum, 2>
 			{
 			public:
-				RodTerminal() : GeneralTerminal(distribs) {}
+				RodTerminal() : GeneralTerminal(GetDistribs()) {}
 				char* name() { return "Rod"; }
 				static Distribution<RealNum>* distribs[2];
+				static Distribution<RealNum>** GetDistribs()
+				{
+					if (distribs[0] == NULL) { distribs[0] = &Parameters<RealNum>::Instance()->rodLength; distribs[1] = &Parameters<RealNum>::Instance()->rodConnect; }
+					return distribs;
+				}
 			};
 			template<typename RealNum>
-			Distribution<RealNum>* RodTerminal<RealNum>::distribs[2] = { &Parameters<RealNum>::rodLength, &Parameters<RealNum>::rodConnect };
+			Distribution<RealNum>* RodTerminal<RealNum>::distribs[2] = { NULL, NULL};
 			enum RodTerminalParamIndices { RodLength = 0, RodConnectPoint };
 
 			template <typename RealNum>
 			class WeightTerminal : public GeneralTerminal<RealNum, 1>
 			{
 			public:
-				WeightTerminal() : GeneralTerminal(distribs) {}
+				WeightTerminal() : GeneralTerminal(GetDistribs()) {}
 				char* name() { return "Weight"; }
 				static Distribution<RealNum>* distribs[1];
+				static Distribution<RealNum>** GetDistribs()
+				{
+					if (distribs[0] == NULL) { distribs[0] = &Parameters<RealNum>::Instance()->weightRadius; }
+					return distribs;
+				}
 			};
 			template<typename RealNum>
-			Distribution<RealNum>* WeightTerminal<RealNum>::distribs[1] = { &Parameters<RealNum>::weightRadius };
+			Distribution<RealNum>* WeightTerminal<RealNum>::distribs[1] = { NULL };
 			enum WeightTerminalParamIndices { WeightRadius = 0 };
 
 			template <typename RealNum>
@@ -86,7 +100,7 @@ namespace simference
 						[](const Variable<RealNum>& v)
 					{
 						StringEndpointVariable<RealNum>* sev = (StringEndpointVariable<RealNum>*)(&v);
-						return sev->depth / (double)(Parameters<RealNum>::maxDepth);
+						return sev->depth / (RealNum)(Parameters<RealNum>::Instance()->maxDepth);
 					},
 						// Unroll expression: replace the variable with a terminal weight with randomly-sampled mass
 						[](const Variable<RealNum>& v)
@@ -104,7 +118,7 @@ namespace simference
 						[](const Variable<RealNum>& v)
 					{
 						StringEndpointVariable<RealNum>* sev = (StringEndpointVariable<RealNum>*)(&v);
-						return 1.0 - sev->depth / (double)(Parameters<RealNum>::maxDepth);
+						return 1.0 - sev->depth / (RealNum)(Parameters<RealNum>::Instance()->maxDepth);
 					},
 						// Unroll expression
 						[](const Variable<RealNum>& v)

@@ -4,6 +4,7 @@
 #include "MobileGrammar.h"
 #include "../Common/DAD.h"
 #include "../Common/Math.h"
+#include <stan/agrad/agrad.hpp>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <algorithm>
@@ -379,6 +380,8 @@ namespace simference
 
 		child->render();
 	}
+	// Specialization (see Mobile.cpp)
+	template<> void Mobile<stan::agrad::var>::StringComponent::render();
 
 	template<typename RealNum>
 	RealNum Mobile<RealNum>::StringComponent::mass()
@@ -411,6 +414,8 @@ namespace simference
 		glutSolidSphere(radius, RADIAL_SLICES, RADIAL_SLICES);
 		glPopMatrix();
 	}
+	// Specialization (see Mobile.cpp)
+	template<> void Mobile<stan::agrad::var>::WeightComponent::render();
 
 	template<typename RealNum>
 	RealNum Mobile<RealNum>::WeightComponent::mass()
@@ -459,7 +464,7 @@ namespace simference
 		Vector3r c2 = weight->anchor; c2.y() -= radius2;
 		RealNum d = (c1-c2).norm();
 		RealNum r = radius1 + radius2;
-		return max(r-d, 0.0);
+		return max(r-d, (RealNum)0.0);
 	}
 
 	template<typename RealNum>
@@ -477,6 +482,8 @@ namespace simference
 		leftChild->render();
 		rightChild->render();
 	}
+	// Specialization (see Mobile.cpp)
+	template<> void Mobile<stan::agrad::var>::RodComponent::render();
 
 	template<typename RealNum>
 	RealNum Mobile<RealNum>::RodComponent::mass()
