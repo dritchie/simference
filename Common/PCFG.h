@@ -99,6 +99,13 @@ namespace simference
 
 			String() : logprob(0.0) {}
 
+			void print(std::ostream& out) const
+			{
+				for (auto sym : symbols)
+					sym->print(out);
+				out << endl;
+			}
+
 			RealNum structureLogProb() const { return logprob; }
 
 			RealNum paramLogProb() const

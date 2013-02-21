@@ -78,7 +78,8 @@ void keyboard(unsigned char key, int x, int y)
 	else if (key == 't')
 	{
 		if (mobile)
-			cout << "Sum of rod torque norms: " << mobile->netTorqueNorm() << endl;
+			//cout << "Softmax rod torque norm: " << mobile->softMaxTorqueNorm() << endl;
+			cout << "Average rod torque norm: " << mobile->netTorqueNorm() << endl;
 	}
 	else if (key == 'a')
 	{
@@ -94,6 +95,7 @@ void keyboard(unsigned char key, int x, int y)
 			auto dstring = dtree.derivedString();
 			auto dmobile = new Mobile<RealNum>(dstring, anchor);
 			auto collsum = dmobile->checkStaticCollisions();
+			//torque += dmobile->softMaxTorqueNorm();
 			torque += dmobile->netTorqueNorm();
 			delete dmobile;
 			summ.rodXrod += collsum.rodXrod;
@@ -101,6 +103,11 @@ void keyboard(unsigned char key, int x, int y)
 			summ.rodXweight += collsum.rodXweight;
 			summ.weightXstring += collsum.weightXstring;
 			summ.weightXweight += collsum.weightXweight;
+			if (summ.weightXweight != summ.weightXweight)
+			{
+				dstring.print(cout);
+				while(true) {}
+			}
 		}
 		summ.rodXrod /= nCollisionSamples;
 		summ.rodXstring /= nCollisionSamples;

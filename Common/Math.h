@@ -65,6 +65,23 @@ namespace simference
 		{
 			return log(val) / log((T)2.0);
 		}
+
+		template<class Collection>
+		typename Collection::value_type softMax(const Collection& nums, typename Collection::value_type alpha)
+		{
+			typedef typename Collection::value_type T;
+			T numer = 0.0;
+			T denom = 0.0;
+			for (T num : nums)
+			{
+				T ean = exp(alpha*num);
+				numer += num * ean;
+				denom += ean;
+			}
+			if (denom > 0.0)
+				return numer / denom;
+			else return 0.0;
+		}
 	}
 }
 

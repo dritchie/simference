@@ -33,7 +33,7 @@ namespace simference
 					ValProbType t = rand() / ((ValProbType)RAND_MAX);
 					return (1-t)*minvalue + t*maxvalue;
 				}
-				ValProbType prob (ValProbType val) const { return Prob(val, minval, maxval); }
+				ValProbType prob(ValProbType val) const { return Prob(val, minval, maxval); }
 				ValProbType sample() const { return Sample(minval, maxval); }
 
 			private:
@@ -74,7 +74,7 @@ namespace simference
 					: mean(mu), stddev(sigma) {}
 				static ValProbType Prob(ValProbType val, ParamType mu, ParamType sigma)
 				{
-					ParamType valMinusMu = val - mu;
+					ValProbType valMinusMu = val - mu;
 					return (ValProbType)1.0/(sigma*sqrt(TwoPi)) * exp(-valMinusMu*valMinusMu/(2*sigma*sigma));
 				}
 				static ValProbType Sample(ParamType mu = (ParamType)0.0, ParamType sigma = (ParamType)1.0)
@@ -145,7 +145,8 @@ namespace simference
 				static ValProbType Sample(ParamType mu, ParamType sigma, ParamType lo, ParamType hi)
 				{
 					ValProbType cumNormLo = cumulativeNormal(lo);
-					ValProbType raw = invCumulativeNormal(cumNormLo + UniformDistribution<ValProbType>::Sample() * (cumulativeNormal(hi) - cumNormLo));
+					ValProbType u = UniformDistribution<ValProbType>::Sample(0.0000001, 0.999999);
+					ValProbType raw = invCumulativeNormal(cumNormLo + u * (cumulativeNormal(hi) - cumNormLo));
 					return sigma*raw + mu;
 				}
 				ValProbType prob(ValProbType val) const { return Prob(val, mean, stddev, lowerBound, upperBound); }

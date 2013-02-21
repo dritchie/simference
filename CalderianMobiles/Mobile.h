@@ -131,6 +131,7 @@ namespace simference
 		bool sanityCheckNodeCodes() const;
 		void printNodeCodes() const;
 		RealNum netTorqueNorm() const;
+		RealNum softMaxTorqueNorm() const;
 
 	private:
 		ComponentPtr root;
@@ -227,18 +228,21 @@ namespace simference
 		auto weights = nodesOfType<WeightComponent>();
 
 		// rod vs. rod
-		for (unsigned int i = 0; i < rods.size()-1; i++)
+		if (rods.size() > 0)
 		{
-			auto rod1 = rods[i];
-			for (unsigned int j = i+1; j < rods.size(); j++)
+			for (unsigned int i = 0; i < rods.size()-1; i++)
 			{
-				auto rod2 = rods[j];
-				// Compare against only non-descendants and non-ancestors
-				if (!rod1->isDescendantOf(rod2) && !rod1->isAncestorOf(rod2))
+				auto rod1 = rods[i];
+				for (unsigned int j = i+1; j < rods.size(); j++)
 				{
-					RealNum c = rod1->collision(rod2);
-					summary.rodXrod += c;
-					summary.rodXrodN += (c > 0.0);
+					auto rod2 = rods[j];
+					// Compare against only non-descendants and non-ancestors
+					if (!rod1->isDescendantOf(rod2) && !rod1->isAncestorOf(rod2))
+					{
+						RealNum c = rod1->collision(rod2);
+						summary.rodXrod += c;
+						summary.rodXrodN += (c > 0.0);
+					}
 				}
 			}
 		}
@@ -280,14 +284,17 @@ namespace simference
 		}
 
 		// weight vs. weight
-		for (unsigned int i = 0; i < weights.size()-1; i++)
+		if (weights.size() > 0)
 		{
-			for (unsigned int j = i+1; j < weights.size(); j++)
+			for (unsigned int i = 0; i < weights.size()-1; i++)
 			{
-				// Have to check against every other weight, unfortunately
-				RealNum c = weights[i]->collision(weights[j]);
-				summary.weightXweight += c;
-				summary.weightXweightN += (c > 0.0);
+				for (unsigned int j = i+1; j < weights.size(); j++)
+				{
+					// Have to check against every other weight, unfortunately
+					RealNum c = weights[i]->collision(weights[j]);
+					summary.weightXweight += c;
+					summary.weightXweightN += (c > 0.0);
+				}
 			}
 		}
 
@@ -363,7 +370,22 @@ namespace simference
 		{
 			accum += rod->torque().norm();
 		}
-		return accum;
+		return accum / rods.size();
+	}
+
+	template<typename RealNum>
+	RealNum Mobile<RealNum>::softMaxTorqueNorm() const
+	{
+		RealNum accum = 0.0;
+		auto rods = nodesOfType<RodComponent>();
+		std::vector<RealNum> torqueNorms(rods.size(), 0.0);
+		for (unsigned int i = 0; i < rods.size(); i++)
+		{
+			torqueNorms[i] = rods[i]->torque().norm();
+		}
+		//RealNum hmax = *(std::max_element(torqueNorms.begin(), torqueNorms.end()));
+		RealNum smax =  Math::softMax(torqueNorms, 0.25);
+		return smax;
 	}
 
 	// Rendering and simulation constants
