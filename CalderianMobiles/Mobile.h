@@ -113,11 +113,16 @@ namespace simference
 				weightXstringN, weightXweightN;
 		};
 
-		Mobile(String<RealNum> derivation, const Vector3r& anchor);
+		Mobile(String<RealNum> derivation, const Eigen::Vector3d& anchor);
 
 		void render() const;
-		void updateAnchors(const Vector3r& a) { root->updateAnchors(a); }
-		void updateAnchors() { root->updateAnchors(root->anchor); }
+		void updateAnchors(const Eigen::Vector3d& a)
+		{
+			rootAnchor = a;
+			Vector3r ar(a.x(), a.y(), a.z());
+			root->updateAnchors(ar);
+		}
+		void updateAnchors() { updateAnchors(rootAnchor); }
 		CollisionSummary checkStaticCollisions() const;
 		bool sanityCheckNodeCodes() const;
 		void printNodeCodes() const;
@@ -125,6 +130,7 @@ namespace simference
 
 	private:
 		ComponentPtr root;
+		Eigen::Vector3d rootAnchor;
 		static GLUquadric* quadric;
 
 		template<class T> std::vector<T*> nodesOfType() const;
@@ -135,7 +141,7 @@ namespace simference
 
 
 	template<typename RealNum>
-	Mobile<RealNum>::Mobile(String<RealNum> derivation, const Vector3r& anchor)
+	Mobile<RealNum>::Mobile(String<RealNum> derivation, const Eigen::Vector3d& anchor)
 	{
 		function<ComponentPtr(NodeCode*)> helper = [&helper, &derivation](NodeCode* code) -> ComponentPtr
 		{

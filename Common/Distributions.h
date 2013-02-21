@@ -40,18 +40,18 @@ namespace simference
 				ParamType minval, maxval;
 			};
 
-			template<typename ValProbType, typename ParamType = ValProbType>
-			class MultinomialDistribution : public Distribution<ValProbType, unsigned int>
+			template<typename ProbType, typename ParamType = ProbType>
+			class MultinomialDistribution : public Distribution<ProbType, unsigned int>
 			{
 			public:
 				MultinomialDistribution(const std::vector<ParamType>& params)
 					: parameters(params) {}
-				static ValProbType Prob(unsigned int val, const std::vector<ParamType>& params) { return (ValProbType)params[val]; } 
+				static ProbType Prob(unsigned int val, const std::vector<ParamType>& params) { return (ProbType)params[val]; } 
 				static unsigned int Sample(const std::vector<ParamType>& params)
 				{
 					unsigned int result = 0;
-					ValProbType x = UniformDistribution<ValProbType>::Sample();
-					ValProbType probAccum = (ValProbType) 1e-6;		// Small episilon to avoid numerical issues
+					ProbType x = UniformDistribution<ProbType>::Sample();
+					ProbType probAccum = (ProbType) 1e-6;		// Small episilon to avoid numerical issues
 					unsigned int k = params.size();
 					for (; result < k; result++)
 					{
@@ -60,7 +60,7 @@ namespace simference
 					}
 					return result;
 				}
-				ValProbType prob(unsigned int val) const { return Prob(val, parameters); }
+				ProbType prob(unsigned int val) const { return Prob(val, parameters); }
 				unsigned int sample() const { return Sample(parameters); }
 			private:
 				std::vector<ParamType> parameters;

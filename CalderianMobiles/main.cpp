@@ -21,7 +21,7 @@ typedef var RealNum;
 String<RealNum>* axiom = NULL;
 String<RealNum>* derivedString = NULL;
 Mobile<RealNum>* mobile = NULL;
-Mobile<RealNum>::Vector3r* anchor = NULL;
+Vector3d anchor(0.0, 9.5, 0.0);
 
 void reshape(int w, int h)
 {
@@ -52,7 +52,7 @@ void keyboard(unsigned char key, int x, int y)
 		auto dtree = Derive(*axiom);
 		*derivedString = dtree.derivedString();
 		if (mobile) delete mobile;
-		mobile = new Mobile<RealNum>(*derivedString, *anchor);
+		mobile = new Mobile<RealNum>(*derivedString, anchor);
 
 		//auto* params = Parameters<RealNum>::Instance();
 
@@ -92,7 +92,7 @@ void keyboard(unsigned char key, int x, int y)
 		{
 			auto dtree = Derive(*axiom);
 			auto dstring = dtree.derivedString();
-			auto dmobile = new Mobile<RealNum>(dstring, *anchor);
+			auto dmobile = new Mobile<RealNum>(dstring, anchor);
 			auto collsum = dmobile->checkStaticCollisions();
 			delete dmobile;
 			summ.rodXrod += collsum.rodXrod;
@@ -113,15 +113,15 @@ void keyboard(unsigned char key, int x, int y)
 		// Use stan's hmc to sample a bunch of parameter settings
 		// for the current derived structure.
 
-		static const unsigned int numHmcIters = 100;
-		static const unsigned int numWarmup = 10;
+		static const unsigned int numHmcIters = 2000;
+		static const unsigned int numWarmup = 200;
 
 		vector<var> params;
 		derivedString->getParams(params);
 		vector<double> initParams;
 		for (auto var : params) initParams.push_back(var.val());
 
-		auto model = MobileModel(*derivedString, *anchor);
+		auto model = MobileModel(*derivedString, anchor);
 		auto sampler = stan::mcmc::nuts<>(model);
 		vector<Sample> samples;
 		GenerateSamples(sampler, initParams, samples, numHmcIters, numWarmup);
@@ -154,7 +154,6 @@ int main(int argc, char** argv)
 
 	axiom = new String<RealNum>;
 	derivedString = new String<RealNum>;
-	anchor = new Mobile<RealNum>::Vector3r(0.0, 9.5, 0.0);
 
 	// We start with a single string (the string from which everything hangs)
 	auto root = new StringTerminal<RealNum>(0);
