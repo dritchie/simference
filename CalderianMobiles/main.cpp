@@ -83,16 +83,18 @@ void keyboard(unsigned char key, int x, int y)
 	else if (key == 'a')
 	{
 		// Sample a bunch of derivations and average the collision stats
-		// Report 1/3 the average
+		// as well as the net torque norm
 		// (Useful for deciding factor kernel bandwidths)
 		Mobile<RealNum>::CollisionSummary summ;
-		static const unsigned int nCollisionSamples = 300;
+		RealNum torque = 0.0;
+		static const unsigned int nCollisionSamples = 1000;
 		for (unsigned int i = 0; i < nCollisionSamples; i++)
 		{
 			auto dtree = Derive(*axiom);
 			auto dstring = dtree.derivedString();
 			auto dmobile = new Mobile<RealNum>(dstring, anchor);
 			auto collsum = dmobile->checkStaticCollisions();
+			torque += dmobile->netTorqueNorm();
 			delete dmobile;
 			summ.rodXrod += collsum.rodXrod;
 			summ.rodXstring += collsum.rodXstring;
@@ -100,12 +102,13 @@ void keyboard(unsigned char key, int x, int y)
 			summ.weightXstring += collsum.weightXstring;
 			summ.weightXweight += collsum.weightXweight;
 		}
-		summ.rodXrod *= 0.333 / nCollisionSamples;
-		summ.rodXstring *= 0.333 / nCollisionSamples;
-		summ.rodXweight *= 0.333 / nCollisionSamples;
-		summ.weightXstring *= 0.333 / nCollisionSamples;
-		summ.weightXweight *= 0.333 / nCollisionSamples;
+		summ.rodXrod /= nCollisionSamples;
+		summ.rodXstring /= nCollisionSamples;
+		summ.rodXweight /= nCollisionSamples;
+		summ.weightXstring /= nCollisionSamples;
+		summ.weightXweight /= nCollisionSamples;
 		summ.print();
+		cout << "torque: " << torque / nCollisionSamples << endl;
 	}
 	else if (key == 'h')
 	{
