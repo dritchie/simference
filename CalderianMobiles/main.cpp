@@ -125,9 +125,9 @@ void keyboard(unsigned char key, int x, int y)
 		GenerateSamples(model, initParams, samples, numHmcIters, numWarmup);
 
 		// Find the sample with highest log-probability and display that state
-		//sort(samples.begin(), samples.end(), [](const Sample& s1, const Sample& s2) { return s1.logprob > s2.logprob; });
-		unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-		shuffle(samples.begin(), samples.end(), default_random_engine(seed));
+		sort(samples.begin(), samples.end(), [](const Sample& s1, const Sample& s2) { return s1.logprob > s2.logprob; });
+		//unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+		//shuffle(samples.begin(), samples.end(), default_random_engine(seed));
 		const Sample& bestsamp = samples[0];
 		params.clear();
 		for (double d : bestsamp.params) params.push_back(var(d));

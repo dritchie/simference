@@ -95,6 +95,10 @@ namespace simference
 			RealNum collision(RodComponent* rod) const;
 			RealNum collision(StringComponent* str) const;
 			RealNum collision(WeightComponent* weight) const;
+			RealNum scaledConnectPoint() const
+			{
+				return sym->params[RodConnectPoint]*sym->params[RodLength];
+			}
 			ComponentPtr leftChild;
 			ComponentPtr rightChild;
 			RodTerminal<RealNum>* sym;
@@ -481,7 +485,7 @@ namespace simference
 		SET_ROD_COLOR;
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
-		glTranslatef(anchor.x()-sym->params[RodConnectPoint], anchor.y(), anchor.z());
+		glTranslatef(anchor.x()-scaledConnectPoint(), anchor.y(), anchor.z());
 		glRotatef(90.0f, 0.0f, 1.0f, 0.0f);
 		gluCylinder(quadric, ROD_RADIUS, ROD_RADIUS, sym->params[RodLength], RADIAL_SLICES, 1);
 		glPopMatrix();
@@ -504,7 +508,7 @@ namespace simference
 	void Mobile<RealNum>::RodComponent::updateAnchors(const Vector3r& a)
 	{
 		Component::updateAnchors(a);
-		Vector3r lp = a - Vector3r(sym->params[RodConnectPoint], 0.0, 0.0);
+		Vector3r lp = a - Vector3r(scaledConnectPoint(), 0.0, 0.0);
 		Vector3r rp = lp + Vector3r(sym->params[RodLength], 0.0, 0.0);
 		leftChild->updateAnchors(lp);
 		rightChild->updateAnchors(rp);
@@ -513,7 +517,7 @@ namespace simference
 	template<typename RealNum>
 	typename Mobile<RealNum>::Vector3r Mobile<RealNum>::RodComponent::torque() const
 	{
-		Vector3r lp = anchor; lp.x() -= sym->params[RodConnectPoint];
+		Vector3r lp = anchor; lp.x() -= scaledConnectPoint();
 		Vector3r rp = lp; rp.x() += sym->params[RodLength];
 		Vector3r d1 = lp - anchor;
 		Vector3r d2 = rp - anchor;
@@ -535,9 +539,9 @@ namespace simference
 		RealNum ymax2 = rod->anchor.y() + ROD_RADIUS;
 		if (Math::intervalsOverlap(ymin1, ymax1, ymin2, ymax2))
 		{
-			RealNum xmin1 = anchor.x() - sym->params[RodConnectPoint];
+			RealNum xmin1 = anchor.x() - scaledConnectPoint();
 			RealNum xmax1 = xmin1 + sym->params[RodLength];
-			RealNum xmin2 = rod->anchor.x() - rod->sym->params[RodConnectPoint];
+			RealNum xmin2 = rod->anchor.x() - rod->scaledConnectPoint();
 			RealNum xmax2 = xmin2 + rod->sym->params[RodLength];
 			return Math::intervalOverlapAmount(xmin1, xmax1, xmin2, xmax2);
 		}
@@ -550,7 +554,7 @@ namespace simference
 		// collision == min distance from intersection point
 		// to any endpoint of either party (linear)
 		RealNum x = str->anchor.x();
-		RealNum rs = anchor.x() - sym->params[RodConnectPoint];
+		RealNum rs = anchor.x() - scaledConnectPoint();
 		RealNum re = rs + sym->params[RodLength];
 		RealNum y = anchor.y();
 		RealNum ss = str->anchor.y();
@@ -567,7 +571,7 @@ namespace simference
 	{
 		RealNum radius = weight->sym->params[WeightRadius];
 		// collision == chord length (linear)
-		Vector3r p = anchor; p.x() -= sym->params[RodConnectPoint];
+		Vector3r p = anchor; p.x() -= scaledConnectPoint();
 		Vector3r center = weight->anchor; center.y() -= radius;
 		RealNum a = 1.0;
 		RealNum b = 2*(p.x() - center.x());

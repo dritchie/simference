@@ -45,7 +45,7 @@ namespace simference
 		SET_ROD_COLOR;
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
-		glTranslatef((anchor.x()-sym->params[RodConnectPoint]).val(), anchor.y().val(), anchor.z().val());
+		glTranslatef((anchor.x()-scaledConnectPoint()).val(), anchor.y().val(), anchor.z().val());
 		glRotatef(90.0f, 0.0f, 1.0f, 0.0f);
 		gluCylinder(quadric, ROD_RADIUS, ROD_RADIUS, sym->params[RodLength].val(), RADIAL_SLICES, 1);
 		glPopMatrix();

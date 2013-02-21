@@ -16,7 +16,7 @@ namespace simference
 				Parameters() :
 					stringLength(2.0, 0.5, 0.0, 10.0),
 					rodLength(3.0, 1.0, 0.0, 10.0),
-					rodConnect(1.5, 0.45, 0.0, 3.0),
+					rodConnect(0.5, 0.15, 0.0, 1.0),
 					weightRadius(0.5, 0.25, 0.0, 10.0),
 					maxDepth(5) {}
 				static Parameters<RealNum>* instance;
