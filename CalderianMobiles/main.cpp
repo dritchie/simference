@@ -1,11 +1,10 @@
-#include <stan/agrad/agrad.hpp>
-#include <stan/mcmc/nuts.hpp>
-
+#include "../Common/Sampling.h"
 #include "MobileGrammar.h"
 #include "Mobile.h"
 #include "MobileModel.h"
-#include "../Common/Sampling.h"
 #include <iostream>
+#include <chrono>
+#include <random>
 #include <GL/glut.h>
 
 using namespace simference;
@@ -54,7 +53,7 @@ void keyboard(unsigned char key, int x, int y)
 		if (mobile) delete mobile;
 		mobile = new Mobile<RealNum>(*derivedString, anchor);
 
-		//auto* params = Parameters<RealNum>::Instance();
+		cout << "param log prob: " << derivedString->paramLogProb() << endl;
 
 		needsRedisplay = true;
 	}
@@ -122,18 +121,21 @@ void keyboard(unsigned char key, int x, int y)
 		for (auto var : params) initParams.push_back(var.val());
 
 		auto model = MobileModel(*derivedString, anchor);
-		auto sampler = stan::mcmc::nuts<>(model);
 		vector<Sample> samples;
-		GenerateSamples(sampler, initParams, samples, numHmcIters, numWarmup);
+		GenerateSamples(model, initParams, samples, numHmcIters, numWarmup);
 
 		// Find the sample with highest log-probability and display that state
-		std::sort(samples.begin(), samples.end(), [](const Sample& s1, const Sample& s2) { return s1.logprob > s2.logprob; });
+		//sort(samples.begin(), samples.end(), [](const Sample& s1, const Sample& s2) { return s1.logprob > s2.logprob; });
+		unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+		shuffle(samples.begin(), samples.end(), default_random_engine(seed));
 		const Sample& bestsamp = samples[0];
 		params.clear();
 		for (double d : bestsamp.params) params.push_back(var(d));
 		derivedString->setParams(params);
 		mobile->updateAnchors();
 		needsRedisplay = true;
+
+		cout << "param log prob: " << derivedString->paramLogProb() << endl;
 	}
 
 	if (needsRedisplay)
