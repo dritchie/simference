@@ -8,7 +8,7 @@ using namespace stan::agrad;
 namespace simference
 {
 	template<>
-	void Mobile<var>::StringComponent::render()
+	void Mobile<var>::StringComponent::render() const
 	{
 		SET_STRING_COLOR;
 		glMatrixMode(GL_MODELVIEW);
@@ -22,7 +22,7 @@ namespace simference
 	}
 
 	template<>
-	void Mobile<var>::WeightComponent::render()
+	void Mobile<var>::WeightComponent::render() const
 	{
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
@@ -39,7 +39,7 @@ namespace simference
 	}
 
 	template<>
-	void Mobile<var>::RodComponent::render()
+	void Mobile<var>::RodComponent::render() const
 	{
 		// Draw a rod
 		SET_ROD_COLOR;

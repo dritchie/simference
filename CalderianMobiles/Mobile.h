@@ -34,16 +34,16 @@ namespace simference
 			Component(NodeCode* parentCode, NodeNum siblingId, NodeNum numSiblings) :
 				code(parentCode, siblingId, numSiblings) {}
 
-			virtual void render() = 0;
-			virtual RealNum mass() = 0;
+			virtual void render() const = 0;
+			virtual RealNum mass() const = 0;
 			virtual void updateAnchors(const Vector3r& a) { anchor = a; }
-			virtual unsigned int numChildren() { return 0; }
-			virtual Component* firstChild() { return NULL; }
-			virtual Component* secondChild() { return NULL; }
+			virtual unsigned int numChildren() const { return 0; }
+			virtual Component* firstChild() const { return NULL; }
+			virtual Component* secondChild() const { return NULL; }
 			template<class T> bool is() { return dynamic_cast<T*>(this) != NULL; }
 			template<class T> T* as() { return dynamic_cast<T*>(this); }
-			bool isDescendantOf(Component* other) { return code < other->code; }
-			bool isAncestorOf(Component* other) { return other->code < code; }
+			bool isDescendantOf(Component* other) const { return code < other->code; }
+			bool isAncestorOf(Component* other) const { return other->code < code; }
 
 			Vector3r anchor;
 			NodeCode code;
@@ -56,11 +56,11 @@ namespace simference
 			StringComponent(StringTerminal<RealNum>* st,
 				NodeCode* parentCode, NodeNum siblingId, NodeNum numSiblings)
 				: Component(parentCode, siblingId, numSiblings), sym(st) {}
-			void render();
-			RealNum mass();
+			void render() const;
+			RealNum mass() const;
 			void updateAnchors(const Vector3r& a);
-			unsigned int numChildren() { return 1; }
-			Component* firstChild() { return child.get(); }
+			unsigned int numChildren() const { return 1; }
+			Component* firstChild() const { return child.get(); }
 			StringTerminal<RealNum>* sym;
 			ComponentPtr child;
 		};
@@ -71,10 +71,10 @@ namespace simference
 			WeightComponent(WeightTerminal<RealNum>* wt,
 				NodeCode* parentCode, NodeNum siblingId, NodeNum numSiblings)
 				: Component(parentCode, siblingId, numSiblings), sym(wt) {}
-			void render();
-			RealNum mass();
-			RealNum collision(StringComponent* str);
-			RealNum collision(WeightComponent* weight);
+			void render() const;
+			RealNum mass() const;
+			RealNum collision(StringComponent* str) const;
+			RealNum collision(WeightComponent* weight) const;
 			WeightTerminal<RealNum>* sym;
 		};
 
@@ -85,16 +85,16 @@ namespace simference
 				NodeCode* parentCode, NodeNum siblingId, NodeNum numSiblings)
 				: Component(parentCode, siblingId, numSiblings), sym(rt) {}
 
-			void render();
-			RealNum mass();
+			void render() const;
+			RealNum mass() const;
 			void updateAnchors(const Vector3r& a);
-			Vector3r torque();
-			unsigned int numChildren() { return 2; }
-			Component* firstChild() { return leftChild.get(); }
-			Component* secondChild() { return rightChild.get(); }
-			RealNum collision(RodComponent* rod);
-			RealNum collision(StringComponent* str);
-			RealNum collision(WeightComponent* weight);
+			Vector3r torque() const;
+			unsigned int numChildren() const { return 2; }
+			Component* firstChild() const { return leftChild.get(); }
+			Component* secondChild() const { return rightChild.get(); }
+			RealNum collision(RodComponent* rod) const;
+			RealNum collision(StringComponent* str) const;
+			RealNum collision(WeightComponent* weight) const;
 			ComponentPtr leftChild;
 			ComponentPtr rightChild;
 			RodTerminal<RealNum>* sym;
@@ -106,7 +106,7 @@ namespace simference
 			CollisionSummary()
 				: rodXrod(0.0), rodXstring(0.0), rodXweight(0.0), weightXstring(0.0), weightXweight(0.0),
 				rodXrodN(0), rodXstringN(0), rodXweightN(0), weightXstringN(0), weightXweightN(0) {}
-			void print();
+			void print() const;
 			RealNum rodXrod, rodXstring, rodXweight,
 				weightXstring, weightXweight;
 			unsigned int rodXrodN, rodXstringN, rodXweightN,
@@ -115,18 +115,19 @@ namespace simference
 
 		Mobile(String<RealNum> derivation, const Vector3r& anchor);
 
-		void render();
+		void render() const;
 		void updateAnchors(const Vector3r& a) { root->updateAnchors(a); }
-		CollisionSummary checkStaticCollisions();
-		bool sanityCheckNodeCodes();
-		void printNodeCodes();
-		RealNum netTorqueNorm();
+		void updateAnchors() { root->updateAnchors(root->anchor); }
+		CollisionSummary checkStaticCollisions() const;
+		bool sanityCheckNodeCodes() const;
+		void printNodeCodes() const;
+		RealNum netTorqueNorm() const;
 
 	private:
 		ComponentPtr root;
 		static GLUquadric* quadric;
 
-		template<class T> std::vector<T*> nodesOfType();
+		template<class T> std::vector<T*> nodesOfType() const;
 	};
 
 
@@ -170,7 +171,7 @@ namespace simference
 	GLUquadric* Mobile<RealNum>::quadric = gluNewQuadric();
 
 	template<typename RealNum>
-	void Mobile<RealNum>::render()
+	void Mobile<RealNum>::render() const
 	{
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
@@ -185,7 +186,7 @@ namespace simference
 
 	template<typename RealNum>
 	template<class T>
-	std::vector<T*> Mobile<RealNum>::nodesOfType()
+	std::vector<T*> Mobile<RealNum>::nodesOfType() const
 	{
 		vector<T*> nodes;
 
@@ -207,7 +208,7 @@ namespace simference
 	}
 
 	template<typename RealNum>
-	typename Mobile<RealNum>::CollisionSummary Mobile<RealNum>::checkStaticCollisions()
+	typename Mobile<RealNum>::CollisionSummary Mobile<RealNum>::checkStaticCollisions() const
 	{
 		CollisionSummary summary;
 
@@ -283,8 +284,8 @@ namespace simference
 		return summary;
 	}
 
-	template<typename RealNum>
-	bool Mobile<RealNum>::sanityCheckNodeCodes()
+	template<typename RealNum> 
+	bool Mobile<RealNum>::sanityCheckNodeCodes() const
 	{
 		function<bool(Component*, vector<Component*>&)> helper =
 			[&helper](Component* node, vector<Component*>& path) -> bool
@@ -328,7 +329,7 @@ namespace simference
 	}
 
 	template<typename RealNum>
-	void Mobile<RealNum>::printNodeCodes()
+	void Mobile<RealNum>::printNodeCodes() const
 	{
 		function<void(Component*,int)> helper = [&helper](Component* node, int depth) -> void
 		{
@@ -344,7 +345,7 @@ namespace simference
 	}
 
 	template<typename RealNum>
-	RealNum Mobile<RealNum>::netTorqueNorm()
+	RealNum Mobile<RealNum>::netTorqueNorm() const
 	{
 		RealNum accum = 0.0;
 		auto rods = nodesOfType<RodComponent>();
@@ -368,7 +369,7 @@ namespace simference
 	#define GRAVITY Vector3r(0.0, -9.8, 0.0)
 
 	template<typename RealNum>
-	void Mobile<RealNum>::StringComponent::render()
+	void Mobile<RealNum>::StringComponent::render() const
 	{
 		SET_STRING_COLOR;
 		glMatrixMode(GL_MODELVIEW);
@@ -381,10 +382,10 @@ namespace simference
 		child->render();
 	}
 	// Specialization (see Mobile.cpp)
-	template<> void Mobile<stan::agrad::var>::StringComponent::render();
+	template<> void Mobile<stan::agrad::var>::StringComponent::render() const;
 
 	template<typename RealNum>
-	RealNum Mobile<RealNum>::StringComponent::mass()
+	RealNum Mobile<RealNum>::StringComponent::mass() const
 	{
 		// Volume: pi r^2 l
 		return STRING_RADIUS*STRING_RADIUS * Math::Pi * sym->params[StringLength] * STRING_DENSITY
@@ -399,7 +400,7 @@ namespace simference
 	}
 
 	template<typename RealNum>
-	void Mobile<RealNum>::WeightComponent::render()
+	void Mobile<RealNum>::WeightComponent::render() const
 	{
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
@@ -415,10 +416,10 @@ namespace simference
 		glPopMatrix();
 	}
 	// Specialization (see Mobile.cpp)
-	template<> void Mobile<stan::agrad::var>::WeightComponent::render();
+	template<> void Mobile<stan::agrad::var>::WeightComponent::render() const;
 
 	template<typename RealNum>
-	RealNum Mobile<RealNum>::WeightComponent::mass()
+	RealNum Mobile<RealNum>::WeightComponent::mass() const
 	{
 		// Volume = 4/3 pi r^3
 		RealNum radius = sym->params[WeightRadius];
@@ -426,7 +427,7 @@ namespace simference
 	}
 
 	template<typename RealNum>
-	RealNum Mobile<RealNum>::WeightComponent::collision(StringComponent* str)
+	RealNum Mobile<RealNum>::WeightComponent::collision(StringComponent* str) const
 	{
 		RealNum radius = sym->params[WeightRadius];
 		RealNum length = str->sym->params[StringLength];
@@ -451,7 +452,7 @@ namespace simference
 	}
 
 	template<typename RealNum>
-	RealNum Mobile<RealNum>::WeightComponent::collision(WeightComponent* weight)
+	RealNum Mobile<RealNum>::WeightComponent::collision(WeightComponent* weight) const
 	{
 		// Sanity check
 		if (this == weight) return 0.0;
@@ -468,7 +469,7 @@ namespace simference
 	}
 
 	template<typename RealNum>
-	void Mobile<RealNum>::RodComponent::render()
+	void Mobile<RealNum>::RodComponent::render() const
 	{
 		// Draw a rod
 		SET_ROD_COLOR;
@@ -483,10 +484,10 @@ namespace simference
 		rightChild->render();
 	}
 	// Specialization (see Mobile.cpp)
-	template<> void Mobile<stan::agrad::var>::RodComponent::render();
+	template<> void Mobile<stan::agrad::var>::RodComponent::render() const;
 
 	template<typename RealNum>
-	RealNum Mobile<RealNum>::RodComponent::mass()
+	RealNum Mobile<RealNum>::RodComponent::mass() const
 	{
 		// Volume: pi r^2 l
 		return ROD_RADIUS*ROD_RADIUS * Math::Pi * sym->params[RodLength] * ROD_DENSITY
@@ -504,7 +505,7 @@ namespace simference
 	}
 
 	template<typename RealNum>
-	typename Mobile<RealNum>::Vector3r Mobile<RealNum>::RodComponent::torque()
+	typename Mobile<RealNum>::Vector3r Mobile<RealNum>::RodComponent::torque() const
 	{
 		Vector3r lp = anchor; lp.x() -= sym->params[RodConnectPoint];
 		Vector3r rp = lp; rp.x() += sym->params[RodLength];
@@ -516,7 +517,7 @@ namespace simference
 	}
 
 	template<typename RealNum>
-	RealNum Mobile<RealNum>::RodComponent::collision(RodComponent* rod)
+	RealNum Mobile<RealNum>::RodComponent::collision(RodComponent* rod) const
 	{
 		// Sanity check
 		if (this == rod) return 0.0;
@@ -538,7 +539,7 @@ namespace simference
 	}
 
 	template<typename RealNum>
-	RealNum Mobile<RealNum>::RodComponent::collision(StringComponent* str)
+	RealNum Mobile<RealNum>::RodComponent::collision(StringComponent* str) const
 	{
 		// collision == min distance from intersection point
 		// to any endpoint of either party (linear)
@@ -556,7 +557,7 @@ namespace simference
 	}
 
 	template<typename RealNum>
-	RealNum Mobile<RealNum>::RodComponent::collision(WeightComponent* weight)
+	RealNum Mobile<RealNum>::RodComponent::collision(WeightComponent* weight) const
 	{
 		RealNum radius = weight->sym->params[WeightRadius];
 		// collision == chord length (linear)
@@ -579,7 +580,7 @@ namespace simference
 	}
 
 	template<typename RealNum>
-	void Mobile<RealNum>::CollisionSummary::print()
+	void Mobile<RealNum>::CollisionSummary::print() const
 	{
 		cout << "Mobile static collision summary:" << endl;
 		cout << "--------------------------------" << endl;

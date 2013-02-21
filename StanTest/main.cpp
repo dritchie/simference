@@ -65,7 +65,7 @@ int main(int argc, char** argv)
 
 	// Sample from the model
 	gm::sample_from(sampler,	// The sampler to use
-					true,		// Whether to use adaptation to find the best step size epsilon
+					true,		// Whether to use adaptation to find the best step size epsilon (adaptation happens during warmup phase)
 					0,			// How many iterations to take in between printing updates to the console
 					2000,		// Number of iterations to run the sampler for
 					100,		// 'num_warmup' , which I assume means the number of burn-in iterations

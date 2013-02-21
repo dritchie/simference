@@ -66,14 +66,17 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Mobile.cpp" />
+    <ClCompile Include="MobileModel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Common\DAD.h" />
     <ClInclude Include="..\Common\Distributions.h" />
     <ClInclude Include="..\Common\Math.h" />
     <ClInclude Include="..\Common\PCFG.h" />
+    <ClInclude Include="..\Common\Sampling.h" />
     <ClInclude Include="Mobile.h" />
     <ClInclude Include="MobileGrammar.h" />
+    <ClInclude Include="MobileModel.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

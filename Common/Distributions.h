@@ -16,42 +16,42 @@ namespace simference
 			class Distribution
 			{
 			public:
-				virtual ProbType prob(ValType val) = 0;
-				ProbType logprob(ValType val) { return (ProbType)log(prob(val)); }
-				virtual ValType sample() = 0;
+				virtual ProbType prob(ValType val) const = 0;
+				ProbType logprob(ValType val) const { return (ProbType)log(prob(val)); }
+				virtual ValType sample() const = 0;
 			};
 
-			template<typename T>
-			class UniformDistribution : public Distribution<T, T>
+			template<typename ValProbType, typename ParamType = ValProbType>
+			class UniformDistribution : public Distribution<ValProbType, ValProbType>
 			{
 			public:
-				UniformDistribution(T minv = (T)0.0, T maxv = (T)1.0)
+				UniformDistribution(ParamType minv = (ParamType)0.0, ParamType maxv = (ParamType)1.0)
 					: minval(minv), maxval(maxv) {}
-				static T Prob(T val, T minvalue, T maxvalue) { return (T)1.0 / (maxvalue - minvalue);}
-				static T Sample(T minvalue = (T)0.0, T maxvalue = (T)1.0)
+				static ValProbType Prob(ValProbType val, ParamType minvalue, ParamType maxvalue)  { return (ValProbType)1.0 / (maxvalue - minvalue);}
+				static ValProbType Sample(ParamType minvalue = (ParamType)0.0, ParamType maxvalue = (ParamType)1.0)
 				{
-					T t = rand() / ((T)RAND_MAX);
+					ValProbType t = rand() / ((ValProbType)RAND_MAX);
 					return (1-t)*minvalue + t*maxvalue;
 				}
-				T prob (T val) { return Prob(val, minval, maxval); }
-				T sample() { return Sample(minval, maxval); }
+				ValProbType prob (ValProbType val) const { return Prob(val, minval, maxval); }
+				ValProbType sample() const { return Sample(minval, maxval); }
 
 			private:
-				T minval, maxval;
+				ParamType minval, maxval;
 			};
 
-			template<typename T>
-			class MultinomialDistribution : public Distribution<T, unsigned int>
+			template<typename ValProbType, typename ParamType = ValProbType>
+			class MultinomialDistribution : public Distribution<ValProbType, unsigned int>
 			{
 			public:
-				MultinomialDistribution(const std::vector<T>& params)
+				MultinomialDistribution(const std::vector<ParamType>& params)
 					: parameters(params) {}
-				static T Prob(unsigned int val, const std::vector<T>& params) { return params[val]; } 
-				static unsigned int Sample(const std::vector<T>& params)
+				static ValProbType Prob(unsigned int val, const std::vector<ParamType>& params) { return (ValProbType)params[val]; } 
+				static unsigned int Sample(const std::vector<ParamType>& params)
 				{
 					unsigned int result = 0;
-					T x = UniformDistribution<T>::Sample();
-					T probAccum = (T) 1e-6;		// Small episilon to avoid numerical issues
+					ValProbType x = UniformDistribution<ValProbType>::Sample();
+					ValProbType probAccum = (ValProbType) 1e-6;		// Small episilon to avoid numerical issues
 					unsigned int k = params.size();
 					for (; result < k; result++)
 					{
@@ -60,39 +60,39 @@ namespace simference
 					}
 					return result;
 				}
-				T prob(unsigned int val) { return Prob(val, parameters); }
-				unsigned int sample() { return Sample(parameters); }
+				ValProbType prob(unsigned int val) const { return Prob(val, parameters); }
+				unsigned int sample() const { return Sample(parameters); }
 			private:
-				std::vector<T> parameters;
+				std::vector<ParamType> parameters;
 			};
 
-			template<typename T>
-			class NormalDistribution : public Distribution<T, T>
+			template<typename ValProbType, typename ParamType = ValProbType>
+			class NormalDistribution : public Distribution<ValProbType, ValProbType>
 			{
 			public:
-				NormalDistribution(T mu = (T)0.0, T sigma = (T)1.0)
+				NormalDistribution(ParamType mu = (ParamType)0.0, ParamType sigma = (ParamType)1.0)
 					: mean(mu), stddev(sigma) {}
-				static T Prob(T val, T mu, T sigma)
+				static ValProbType Prob(ValProbType val, ParamType mu, ParamType sigma)
 				{
-					T valMinusMu = val - mu;
-					return (T)1.0/(sigma*sqrt(TwoPi)) * exp(-valMinusMu*valMinusMu/(2*sigma*sigma));
+					ParamType valMinusMu = val - mu;
+					return (ValProbType)1.0/(sigma*sqrt(TwoPi)) * exp(-valMinusMu*valMinusMu/(2*sigma*sigma));
 				}
-				static T Sample(T mu = (T)0.0, T sigma = (T)1.0)
+				static ValProbType Sample(ParamType mu = (ParamType)0.0, ParamType sigma = (ParamType)1.0)
 				{
 					// Box-Muller method
-					T minval = (T)(0.0) + std::numeric_limits<T>::min();
-					T maxval = (T)(1.0) - std::numeric_limits<T>::min();
-					T u = UniformDistribution<T>::Sample(minval, maxval);
-					T v = UniformDistribution<T>::Sample(minval, maxval);
-					T result = (T)(sqrt(-2 * log(u)) * cos(2*Pi*v));
+					ValProbType minval = (ValProbType)(0.0) + std::numeric_limits<ValProbType>::min();
+					ValProbType maxval = (ValProbType)(1.0) - std::numeric_limits<ValProbType>::min();
+					ValProbType u = UniformDistribution<ValProbType>::Sample(minval, maxval);
+					ValProbType v = UniformDistribution<ValProbType>::Sample(minval, maxval);
+					ValProbType result = (ValProbType)(sqrt(-2 * log(u)) * cos(2*Pi*v));
 					// Note: sqrt(-2 * log(u)) * sin(2*PI*v) is also a valid choice
 					return mu + sigma*result;
 
 				}
-				T prob(T val) { return Prob(val, mean, stddev); }
-				T sample() { return Sample(mean, stddev); }
+				ValProbType prob(ValProbType val) const { return Prob(val, mean, stddev); }
+				ValProbType sample() const { return Sample(mean, stddev); }
 			private:
-				T mean, stddev;
+				ParamType mean, stddev;
 			};
 
 			static double erf_a = 0.147;
@@ -126,32 +126,32 @@ namespace simference
 				return sqrt(2.0) * erfi(2*x - 1);
 			}
 
-			template<typename T>
-			class TruncatedNormalDistribution : public Distribution<T, T>
+			template<typename ValProbType, typename ParamType = ValProbType>
+			class TruncatedNormalDistribution : public Distribution<ValProbType, ValProbType>
 			{
 			public:
-				TruncatedNormalDistribution(T mu, T sigma, T lo, T hi)
+				TruncatedNormalDistribution(ParamType mu, ParamType sigma, ParamType lo, ParamType hi)
 					: mean(mu), stddev(sigma), lowerBound(lo), upperBound(hi) {}
-				static T Prob(T val, T mu, T sigma, T lo, T hi)
+				static ValProbType Prob(ValProbType val, ParamType mu, ParamType sigma, ParamType lo, ParamType hi)
 				{
-					if (val >= lo && val <= hi)
+					if (val > lo && val < hi)
 					{
-						T numer = NormalDistribution<T>::Prob(val, mu, sigma);
-						T denom = cumulativeNormal((hi-mu)/sigma) - cumulativeNormal((lo-mu)/sigma);
+						ValProbType numer = NormalDistribution<ValProbType>::Prob(val, mu, sigma);
+						ValProbType denom = cumulativeNormal((hi-mu)/sigma) - cumulativeNormal((lo-mu)/sigma);
 						return numer / denom;
 					}
 					else return 0.0;
 				}
-				static T Sample(T mu, T sigma, T lo, T hi)
+				static ValProbType Sample(ParamType mu, ParamType sigma, ParamType lo, ParamType hi)
 				{
-					T cumNormLo = cumulativeNormal(lo);
-					T raw = invCumulativeNormal(cumNormLo + UniformDistribution<T>::Sample() * (cumulativeNormal(hi) - cumNormLo));
+					ValProbType cumNormLo = cumulativeNormal(lo);
+					ValProbType raw = invCumulativeNormal(cumNormLo + UniformDistribution<ValProbType>::Sample() * (cumulativeNormal(hi) - cumNormLo));
 					return sigma*raw + mu;
 				}
-				T prob(T val) { return Prob(val, mean, stddev, lowerBound, upperBound); }
-				T sample() { return Sample(mean, stddev, lowerBound, upperBound); }
+				ValProbType prob(ValProbType val) const { return Prob(val, mean, stddev, lowerBound, upperBound); }
+				ValProbType sample() const { return Sample(mean, stddev, lowerBound, upperBound); }
 			private:
-				T mean, stddev, lowerBound, upperBound;
+				ParamType mean, stddev, lowerBound, upperBound;
 			};
 		}
 	}

@@ -34,14 +34,14 @@ namespace simference
 		T length;	// Actual code is stored in the lower 'length' bits of 'code.'
 
 		// Is this a descendant of other?
-		bool operator < (const BCAD& other)
+		bool operator < (const BCAD& other) const
 		{
 			// Compare the first other.length bits of this.code
 			// with other.code
 			return other.code == (this->code >> (length - other.length));
 		}
 
-		void print()
+		void print() const
 		{
 			printf("Code: %u | length: %u", code, length);
 		}

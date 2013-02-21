@@ -22,12 +22,12 @@ namespace simference
 				static Parameters<RealNum>* instance;
 
 			public:
-				TruncatedNormalDistribution<RealNum> stringLength;
-				TruncatedNormalDistribution<RealNum> rodLength;
-				TruncatedNormalDistribution<RealNum> rodConnect;
-				TruncatedNormalDistribution<RealNum> weightRadius;
+				TruncatedNormalDistribution<RealNum, double> stringLength;
+				TruncatedNormalDistribution<RealNum, double> rodLength;
+				TruncatedNormalDistribution<RealNum, double> rodConnect;
+				TruncatedNormalDistribution<RealNum, double> weightRadius;
 				unsigned int maxDepth;
-				static Parameters* Instance() { if (instance == NULL) instance = new Parameters<RealNum>; return instance;}
+				static Parameters* Instance() { if (instance == NULL) {instance = new Parameters<RealNum>;} return instance;}
 			};
 			template <typename RealNum> Parameters<RealNum>* Parameters<RealNum>::instance = NULL;
 
@@ -36,7 +36,7 @@ namespace simference
 			{
 			public:
 				StringTerminal(unsigned int id) : GeneralTerminal(GetDistribs()), index(id) {}
-				char* name() { return "String"; }
+				char* name() const { return "String"; }
 				unsigned int index;
 				static Distribution<RealNum>* distribs[1];
 				static Distribution<RealNum>** GetDistribs()
@@ -53,7 +53,7 @@ namespace simference
 			{
 			public:
 				RodTerminal() : GeneralTerminal(GetDistribs()) {}
-				char* name() { return "Rod"; }
+				char* name() const { return "Rod"; }
 				static Distribution<RealNum>* distribs[2];
 				static Distribution<RealNum>** GetDistribs()
 				{
@@ -61,8 +61,7 @@ namespace simference
 					return distribs;
 				}
 			};
-			template<typename RealNum>
-			Distribution<RealNum>* RodTerminal<RealNum>::distribs[2] = { NULL, NULL};
+			template<typename RealNum> Distribution<RealNum>* RodTerminal<RealNum>::distribs[2] = { NULL, NULL};
 			enum RodTerminalParamIndices { RodLength = 0, RodConnectPoint };
 
 			template <typename RealNum>
@@ -70,7 +69,7 @@ namespace simference
 			{
 			public:
 				WeightTerminal() : GeneralTerminal(GetDistribs()) {}
-				char* name() { return "Weight"; }
+				char* name() const { return "Weight"; }
 				static Distribution<RealNum>* distribs[1];
 				static Distribution<RealNum>** GetDistribs()
 				{
@@ -78,8 +77,7 @@ namespace simference
 					return distribs;
 				}
 			};
-			template<typename RealNum>
-			Distribution<RealNum>* WeightTerminal<RealNum>::distribs[1] = { NULL };
+			template<typename RealNum> Distribution<RealNum>* WeightTerminal<RealNum>::distribs[1] = { NULL };
 			enum WeightTerminalParamIndices { WeightRadius = 0 };
 
 			template <typename RealNum>
@@ -141,7 +139,7 @@ namespace simference
 
 				const std::vector<Production<RealNum>>& productions() { return productionList; }
 
-				void print(std::ostream& outstream) { outstream << "SVar(" << depth << ")"; }
+				void print(std::ostream& outstream) const { outstream << "SVar(" << depth << ")"; }
 
 				unsigned int depth;
 				static std::vector<Production<RealNum>> productionList;

@@ -18,8 +18,8 @@ namespace simference
 		class Symbol
 		{
 		public:
-			virtual bool isTerminal() = 0;
-			virtual void print(std::ostream& outstream) = 0;
+			virtual bool isTerminal() const = 0;
+			virtual void print(std::ostream& outstream) const = 0;
 			template<class T> bool is() { return dynamic_cast<T*>(this) != NULL; }
 			template<class T> T* as() { return dynamic_cast<T*>(this); }
 		};
@@ -31,9 +31,10 @@ namespace simference
 		{
 		public:
 			typedef typename std::vector<RealNum>::const_iterator ParamIterator;
-			bool isTerminal() { return true; }
-			virtual RealNum paramLogProb() = 0;
-			virtual void getParams(std::vector<RealNum>& p) = 0;
+			bool isTerminal() const { return true; }
+			virtual RealNum paramLogProb() const = 0;
+			virtual unsigned int numParams() const = 0;
+			virtual void getParams(std::vector<RealNum>& p) const = 0;
 			virtual void setParams(ParamIterator& p) = 0;
 		};
 
@@ -49,7 +50,7 @@ namespace simference
 					params[i] = distribs[i]->sample();
 			}
 
-			RealNum paramLogProb()
+			RealNum paramLogProb() const
 			{
 				RealNum lp = 0.0;
 				for (unsigned int i = 0; i < nParams; i++)
@@ -57,7 +58,9 @@ namespace simference
 				return lp;
 			}
 
-			void getParams(std::vector<RealNum>& p)
+			unsigned int numParams() const { return nParams; }
+
+			void getParams(std::vector<RealNum>& p) const
 			{
 				for (unsigned int i = 0; i < nParams; i++)
 					p.push_back(params[i]);
@@ -72,7 +75,7 @@ namespace simference
 				}
 			}
 
-			void print(std::ostream& outstream)
+			void print(std::ostream& outstream) const
 			{
 				outstream << name() << "(";
 				for (unsigned int i = 0; i < nParams; i++)
@@ -80,7 +83,7 @@ namespace simference
 				outstream << ")";
 			}
 
-			virtual char* name() = 0;
+			virtual char* name() const = 0;
 
 			RealNum params[nParams];
 			Distribution<RealNum>** distribs;
@@ -96,9 +99,9 @@ namespace simference
 
 			String() : logprob(0.0) {}
 
-			RealNum structureLogProb() { return logprob; }
+			RealNum structureLogProb() const { return logprob; }
 
-			RealNum paramLogProb()
+			RealNum paramLogProb() const
 			{
 				RealNum lp = 0.0;
 				for (auto sym : symbols)
@@ -109,9 +112,20 @@ namespace simference
 				return lp;
 			}
 
-			RealNum totalLogProb() { return structureLogProb() + paramLogProb(); }
+			RealNum totalLogProb() const { return structureLogProb() + paramLogProb(); }
 
-			void getParams(std::vector<RealNum>& p)
+			unsigned int numParams() const
+			{
+				unsigned int n = 0;
+				for (auto sym : symbols)
+				{
+					if (sym->isTerminal())
+						n += sym->as<Terminal<RealNum>>()->numParams();
+				}
+				return n;
+			}
+
+			void getParams(std::vector<RealNum>& p) const
 			{
 				for (auto sym : symbols)
 				{
@@ -142,7 +156,7 @@ namespace simference
 		{
 		public:
 
-			bool isTerminal() { return false; }
+			bool isTerminal() const { return false; }
 
 			String<RealNum> unroll()
 			{
@@ -201,7 +215,7 @@ namespace simference
 		{
 		public:
 
-			String<RealNum> derivedString()
+			String<RealNum> derivedString() const
 			{
 				// Linearize all terminal symbols (DFS order, insert children in reverse order)
 				String<RealNum> derivation;
@@ -216,7 +230,7 @@ namespace simference
 						derivation.symbols.push_back(s);
 					else
 					{
-						const String<RealNum>& succ = successorMap[s];
+						const String<RealNum>& succ = successorMap.at(s);
 						derivation.logprob += succ.logprob;
 						for (auto it = succ.symbols.rbegin(); it != succ.symbols.rend(); it++)
 							fringe.push(*it);
@@ -230,7 +244,7 @@ namespace simference
 		};
 
 		template<typename RealNum>
-		DerivationTree<RealNum> Sample(const String<RealNum>& axiom)
+		DerivationTree<RealNum> Derive(const String<RealNum>& axiom)
 		{
 			DerivationTree<RealNum> dtree;
 			dtree.roots = axiom;

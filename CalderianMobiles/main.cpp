@@ -1,16 +1,20 @@
+#include <stan/agrad/agrad.hpp>
+#include <stan/mcmc/nuts.hpp>
+
 #include "MobileGrammar.h"
 #include "Mobile.h"
+#include "MobileModel.h"
+#include "../Common/Sampling.h"
 #include <iostream>
 #include <GL/glut.h>
-
-#include <stan/agrad/agrad.hpp>
 
 using namespace simference;
 using namespace std;
 using namespace Eigen;
+using namespace stan::agrad;
 
 //typedef double RealNum;
-typedef stan::agrad::var RealNum;
+typedef var RealNum;
 
 // I have to use pointers for everything because
 // agrad::var cannot be statically allocated safely.
@@ -45,10 +49,12 @@ void keyboard(unsigned char key, int x, int y)
 
 	if (key == 's')
 	{
-		auto dtree = Sample(*axiom);
+		auto dtree = Derive(*axiom);
 		*derivedString = dtree.derivedString();
 		if (mobile) delete mobile;
 		mobile = new Mobile<RealNum>(*derivedString, *anchor);
+
+		//auto* params = Parameters<RealNum>::Instance();
 
 		needsRedisplay = true;
 	}
@@ -60,7 +66,7 @@ void keyboard(unsigned char key, int x, int y)
 			record.print();
 		}
 	}
-	else if (key == 'a')
+	else if (key == 'd')
 	{
 		if (mobile)
 			cout << "Ancestor/descendant sanity check passed: " << mobile->sanityCheckNodeCodes() << endl;
@@ -74,6 +80,60 @@ void keyboard(unsigned char key, int x, int y)
 	{
 		if (mobile)
 			cout << "Sum of rod torque norms: " << mobile->netTorqueNorm() << endl;
+	}
+	else if (key == 'a')
+	{
+		// Sample a bunch of derivations and average the collision stats
+		// Report 1/3 the average
+		// (Useful for deciding factor kernel bandwidths)
+		Mobile<RealNum>::CollisionSummary summ;
+		static const unsigned int nCollisionSamples = 300;
+		for (unsigned int i = 0; i < nCollisionSamples; i++)
+		{
+			auto dtree = Derive(*axiom);
+			auto dstring = dtree.derivedString();
+			auto dmobile = new Mobile<RealNum>(dstring, *anchor);
+			auto collsum = dmobile->checkStaticCollisions();
+			delete dmobile;
+			summ.rodXrod += collsum.rodXrod;
+			summ.rodXstring += collsum.rodXstring;
+			summ.rodXweight += collsum.rodXweight;
+			summ.weightXstring += collsum.weightXstring;
+			summ.weightXweight += collsum.weightXweight;
+		}
+		summ.rodXrod *= 0.333 / nCollisionSamples;
+		summ.rodXstring *= 0.333 / nCollisionSamples;
+		summ.rodXweight *= 0.333 / nCollisionSamples;
+		summ.weightXstring *= 0.333 / nCollisionSamples;
+		summ.weightXweight *= 0.333 / nCollisionSamples;
+		summ.print();
+	}
+	else if (key == 'h')
+	{
+		// Use stan's hmc to sample a bunch of parameter settings
+		// for the current derived structure.
+
+		static const unsigned int numHmcIters = 100;
+		static const unsigned int numWarmup = 10;
+
+		vector<var> params;
+		derivedString->getParams(params);
+		vector<double> initParams;
+		for (auto var : params) initParams.push_back(var.val());
+
+		auto model = MobileModel(*derivedString, *anchor);
+		auto sampler = stan::mcmc::nuts<>(model);
+		vector<Sample> samples;
+		GenerateSamples(sampler, initParams, samples, numHmcIters, numWarmup);
+
+		// Find the sample with highest log-probability and display that state
+		std::sort(samples.begin(), samples.end(), [](const Sample& s1, const Sample& s2) { return s1.logprob > s2.logprob; });
+		const Sample& bestsamp = samples[0];
+		params.clear();
+		for (double d : bestsamp.params) params.push_back(var(d));
+		derivedString->setParams(params);
+		mobile->updateAnchors();
+		needsRedisplay = true;
 	}
 
 	if (needsRedisplay)
