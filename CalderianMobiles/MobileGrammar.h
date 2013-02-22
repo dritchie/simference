@@ -14,26 +14,26 @@ namespace simference
 			{
 			private:
 				Parameters() :
-					//stringLength(2.0, 0.5, 0.0, 10.0),
-					//rodLength(3.0, 1.0, 0.0, 10.0),
-					//rodConnect(0.5, 0.15, 0.0, 1.0),
-					//weightRadius(0.5, 0.25, 0.0, 10.0),
-					stringLength(2.0, 0.5),
-					rodLength(3.0, 1.0),
-					rodConnect(0.5, 0.15),
-					weightRadius(0.5, 0.25),
+					stringLength(2.0, 0.5, 0.0, 10.0),
+					rodLength(3.0, 1.0, 0.0, 10.0),
+					rodConnect(0.5, 0.15, 0.0, 1.0),
+					weightRadius(0.5, 0.25, 0.0, 10.0),
+					//stringLength(2.0, 0.5),
+					//rodLength(3.0, 1.0),
+					//rodConnect(0.5, 0.15),
+					//weightRadius(0.5, 0.25),
 					maxDepth(5) {}
 				static Parameters<RealNum>* instance;
 
 			public:
-				//TruncatedNormalDistribution<RealNum, double> stringLength;
-				//TruncatedNormalDistribution<RealNum, double> rodLength;
-				//TruncatedNormalDistribution<RealNum, double> rodConnect;
-				//TruncatedNormalDistribution<RealNum, double> weightRadius;
-				NormalDistribution<RealNum, double> stringLength;
-				NormalDistribution<RealNum, double> rodLength;
-				NormalDistribution<RealNum, double> rodConnect;
-				NormalDistribution<RealNum, double> weightRadius;
+				TruncatedNormalDistribution<RealNum, double> stringLength;
+				TruncatedNormalDistribution<RealNum, double> rodLength;
+				TruncatedNormalDistribution<RealNum, double> rodConnect;
+				TruncatedNormalDistribution<RealNum, double> weightRadius;
+				//NormalDistribution<RealNum, double> stringLength;
+				//NormalDistribution<RealNum, double> rodLength;
+				//NormalDistribution<RealNum, double> rodConnect;
+				//NormalDistribution<RealNum, double> weightRadius;
 				unsigned int maxDepth;
 				static Parameters* Instance() { if (instance == NULL) {instance = new Parameters<RealNum>;} return instance;}
 			};

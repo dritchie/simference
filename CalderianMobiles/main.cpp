@@ -78,8 +78,8 @@ void keyboard(unsigned char key, int x, int y)
 	else if (key == 't')
 	{
 		if (mobile)
-			//cout << "Softmax rod torque norm: " << mobile->softMaxTorqueNorm() << endl;
-			cout << "Average rod torque norm: " << mobile->netTorqueNorm() << endl;
+			cout << "Softmax rod torque norm: " << mobile->softMaxTorqueNorm() << endl;
+			//cout << "Average rod torque norm: " << mobile->netTorqueNorm() << endl;
 	}
 	else if (key == 'a')
 	{
@@ -95,8 +95,8 @@ void keyboard(unsigned char key, int x, int y)
 			auto dstring = dtree.derivedString();
 			auto dmobile = new Mobile<RealNum>(dstring, anchor);
 			auto collsum = dmobile->checkStaticCollisions();
-			//torque += dmobile->softMaxTorqueNorm();
-			torque += dmobile->netTorqueNorm();
+			torque += dmobile->softMaxTorqueNorm();
+			//torque += dmobile->netTorqueNorm();
 			delete dmobile;
 			summ.rodXrod += collsum.rodXrod;
 			summ.rodXstring += collsum.rodXstring;
@@ -122,8 +122,8 @@ void keyboard(unsigned char key, int x, int y)
 		// Use stan's hmc to sample a bunch of parameter settings
 		// for the current derived structure.
 
-		static const unsigned int numHmcIters = 2000;
-		static const unsigned int numWarmup = 200;
+		static const unsigned int numHmcIters = 200;
+		static const unsigned int numWarmup = 50;
 
 		vector<var> params;
 		derivedString->getParams(params);
@@ -169,9 +169,38 @@ int main(int argc, char** argv)
 
 	// We start with a single string (the string from which everything hangs)
 	auto root = new StringTerminal<RealNum>(0);
-	root->params[0] = 2.0;
+	root->params[StringLength] = 2.0;
 	axiom->symbols.push_back(SymbolPtr(root));
 	axiom->symbols.push_back(SymbolPtr(new StringEndpointVariable<RealNum>(0)));
+	
+
+	//// Root String
+	//auto root = new StringTerminal<RealNum>(0);
+	//root->params[StringLength] = 2.0;
+	//axiom->symbols.push_back(SymbolPtr(root));
+	//// Rod
+	//auto rod = new RodTerminal<RealNum>;
+	//rod->params[RodLength] = 3.0;
+	//rod->params[RodConnectPoint] = 0.75;
+	//axiom->symbols.push_back(SymbolPtr(rod));
+	//// Left string
+	//auto str1 = new StringTerminal<RealNum>(0);
+	//str1->params[StringLength] = 2.0;
+	//axiom->symbols.push_back(SymbolPtr(str1));
+	//// Left weight
+	//auto w1 = new WeightTerminal<RealNum>;
+	//w1->params[WeightRadius] = 0.35;
+	//axiom->symbols.push_back(SymbolPtr(w1));
+	//// Right string
+	//auto str2 = new StringTerminal<RealNum>(1);
+	//str2->params[StringLength] = 2.0;
+	//axiom->symbols.push_back(SymbolPtr(str2));
+	//// Right weight
+	//auto w2 = new WeightTerminal<RealNum>;
+	//w2->params[WeightRadius] = 0.5;
+	//axiom->symbols.push_back(SymbolPtr(w2));
+
+	//mobile = new Mobile<RealNum>(*axiom, anchor);
 
 	glutMainLoop();
 

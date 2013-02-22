@@ -16,8 +16,10 @@ namespace simference
 			class Distribution
 			{
 			public:
-				virtual ProbType prob(ValType val) const = 0;
-				ProbType logprob(ValType val) const { return (ProbType)log(prob(val)); }
+				// One of these must be overridden in derived classes, or you'll get inifite looping.
+				virtual ProbType prob(ValType val) const { return (ProbType)exp(logprob(val)); }
+				virtual ProbType logprob(ValType val) const { return (ProbType)log(prob(val)); }
+
 				virtual ValType sample() const = 0;
 			};
 
@@ -27,13 +29,25 @@ namespace simference
 			public:
 				UniformDistribution(ParamType minv = (ParamType)0.0, ParamType maxv = (ParamType)1.0)
 					: minval(minv), maxval(maxv) {}
-				static ValProbType Prob(ValProbType val, ParamType minvalue, ParamType maxvalue)  { return (ValProbType)1.0 / (maxvalue - minvalue);}
+				static ValProbType Prob(ValProbType val, ParamType minvalue, ParamType maxvalue)
+				{
+					if (val > minvalue && val < maxvalue)
+						return (ValProbType)1.0 / (maxvalue - minvalue);
+					else return 0.0;
+				}
+				static ValProbType LogProb(ValProbType val, ParamType minvalue, ParamType maxvalue)
+				{
+					if (val > minvalue && val < maxvalue)
+						return (ValProbType)(-log(maxvalue - minvalue));
+					else return -std::numeric_limits<ValProbType>::infinity();
+				}
 				static ValProbType Sample(ParamType minvalue = (ParamType)0.0, ParamType maxvalue = (ParamType)1.0)
 				{
 					ValProbType t = rand() / ((ValProbType)RAND_MAX);
 					return (1-t)*minvalue + t*maxvalue;
 				}
 				ValProbType prob(ValProbType val) const { return Prob(val, minval, maxval); }
+				ValProbType logprob(ValProbType val) const { return LogProb(val, minval, maxval); }
 				ValProbType sample() const { return Sample(minval, maxval); }
 
 			private:
@@ -72,6 +86,11 @@ namespace simference
 			public:
 				NormalDistribution(ParamType mu = (ParamType)0.0, ParamType sigma = (ParamType)1.0)
 					: mean(mu), stddev(sigma) {}
+				static ValProbType LogProb(ValProbType val, ParamType mu, ParamType sigma)
+				{
+					ValProbType valMinusMu = val - mu;
+					return log(1.0/(sigma*sqrt(TwoPi))) - valMinusMu*valMinusMu/(2*sigma*sigma);
+				}
 				static ValProbType Prob(ValProbType val, ParamType mu, ParamType sigma)
 				{
 					ValProbType valMinusMu = val - mu;
@@ -90,6 +109,7 @@ namespace simference
 
 				}
 				ValProbType prob(ValProbType val) const { return Prob(val, mean, stddev); }
+				ValProbType logprob(ValProbType val) const { return LogProb(val, mean, stddev); }
 				ValProbType sample() const { return Sample(mean, stddev); }
 			private:
 				ParamType mean, stddev;
