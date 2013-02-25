@@ -64,6 +64,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Common\Model.cpp" />
+    <ClCompile Include="..\Common\Sampler.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Mobile.cpp" />
     <ClCompile Include="MobileModel.cpp" />
@@ -72,7 +74,9 @@
     <ClInclude Include="..\Common\DAD.h" />
     <ClInclude Include="..\Common\Distributions.h" />
     <ClInclude Include="..\Common\Math.h" />
+    <ClInclude Include="..\Common\Model.h" />
     <ClInclude Include="..\Common\PCFG.h" />
+    <ClInclude Include="..\Common\Sampler.h" />
     <ClInclude Include="..\Common\Sampling.h" />
     <ClInclude Include="Mobile.h" />
     <ClInclude Include="MobileGrammar.h" />
