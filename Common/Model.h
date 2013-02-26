@@ -6,6 +6,16 @@
 
 namespace simference
 {
+	class Structure
+	{
+	public:
+		virtual void getParams(std::vector<double>& params) = 0;
+		virtual void setParams(const std::vector<double>& params) = 0;
+		virtual unsigned int numParams() = 0;
+	};
+
+	typedef std::shared_ptr<Structure> StructurePtr;
+
 	namespace Models
 	{
 		class Model : public stan::model::prob_grad_ad
@@ -26,11 +36,7 @@ namespace simference
 		class Factor
 		{
 		public:
-			Factor(unsigned int pOffset) : paramOffset(pOffset) {}
-			unsigned int parameterOffset() { return paramOffset; }
-			virtual stan::agrad::var log_prob(std::vector<stan::agrad::var>::const_iterator& pit) = 0;
-		private:
-			unsigned int paramOffset;
+			virtual stan::agrad::var log_prob(std::vector<stan::agrad::var>& params_r) = 0;
 		};
 
 		typedef std::shared_ptr<Factor> FactorPtr;
@@ -49,58 +55,40 @@ namespace simference
 			std::vector<FactorPtr> factors;
 		};
 
-		template <class Structure>
 		class FactorTemplate
 		{
 		public:
-			virtual void unroll(const Structure& s, std::vector<FactorPtr>& factors) = 0;
+			virtual void unroll(StructurePtr s, std::vector<FactorPtr>& factors) = 0;
+			// Default behavior is inefficient: the above unroll is invoked on sOld and sNew separately.
+			virtual void unroll(StructurePtr sOld, StructurePtr sNew,
+				std::vector<FactorPtr>& fOld, std::vector<FactorPtr>& fNew, std::vector<FactorPtr>& fShared);
 		};
 
-		// Because MSVC doesn't yet support alias templates
-		template <class Structure>
-		class FactorTemplatePtr
-		{
-		public:
-			typedef std::shared_ptr<FactorTemplate<Structure>> type;
-		};
+		typedef std::shared_ptr<FactorTemplate> FactorTemplatePtr;
 
-		template <class Structure>
 		class FactorTemplateModel
 		{
 		public:
-			typedef typename FactorTemplatePtr<Structure>::type FacTempPtr;
 			FactorTemplateModel() {}
-			FactorTemplateModel(const std::vector<FacTempPtr>& ts)
+			FactorTemplateModel(const std::vector<FactorTemplatePtr>& ts)
 				: templates(ts) {}
-			void addTemplate(FacTempPtr t)
-			{
-				templates.push_back(t);
-			}
-			void removeTemplate(FacTempPtr t)
-			{
-				for (auto it = templates.begin(); it != templates.end(); it++)
-				{
-					if (*it == t)
-					{
-						templates.erase(it);
-						return;
-					}
-				}
-			}
-			void unroll(const Structure& s, std::vector<FactorPtr>& factors)
-			{
-				for (auto t : templates)
-					t->unroll(s, factors);
-			}
+			void addTemplate(FactorTemplatePtr t);
+			void removeTemplate(FactorTemplatePtr t);
+			void unroll(StructurePtr s, std::vector<FactorPtr>& factors);
+			void unroll(StructurePtr sOld, StructurePtr sNew,
+				std::vector<FactorPtr>& fOld, std::vector<FactorPtr>& fNew, std::vector<FactorPtr>& fShared);
 		private:
-			std::vector<FacTempPtr> templates;
+			std::vector<FactorTemplatePtr> templates;
 		};
+
+		typedef std::shared_ptr<FactorTemplateModel> FactorTemplateModelPtr;
 
 		// Weights are not required to be normalized.
 		class MixtureModel : public Model
 		{
 		public:
 			MixtureModel(const std::vector<ModelPtr>& ms, const std::vector<double>& ws);
+			MixtureModel(const std::vector<ModelPtr>& ms);
 			stan::agrad::var log_prob(std::vector<stan::agrad::var>& params_r);
 			std::vector<double>& getWeights() { return weights; }
 
