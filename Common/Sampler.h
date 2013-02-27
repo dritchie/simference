@@ -53,11 +53,17 @@ namespace simference
 
 		protected:
 
-			// Propose a new structure, given the current one.
 			virtual StructurePtr jumpProposal() = 0;
-			//TODO: 'logProposalProbability' method (takes two structures, two param lists)
+
+			virtual void dimensionMatch(StructurePtr sFrom, const std::vector<double>& pFrom,
+										StructurePtr sTo, std::vector<double>& pTo, DimensionMatchMap& matching) = 0;
+
+			virtual double logProposalProbability(StructurePtr sFrom, const std::vector<double>& pFrom,
+												  StructurePtr sTo, const std::vector<double>& pTo) = 0;
 
 			Sample executeJumpMove();
+
+			std::vector<double> translateParameters(const std::vector<double>& params, const DimensionMatchMap& matching) const;
 
 			DiffusionSamplerPtr innerSampler;
 			Models::FactorTemplateModelPtr templateModel;
