@@ -8,10 +8,7 @@ using namespace stan::model;
 
 namespace simference
 {
-	var MobileModel::log_prob(
-					vector<var>& params_r, 
-					vector<int>& params_i,
-					ostream* output_stream)
+	var MobileModel::log_prob(const vector<var>& params_r)
 	{
 		var lp = 0.0;
 
@@ -21,7 +18,7 @@ namespace simference
 		lp += derivationTree.paramLogProb();
 
 		// Static collision factors
-		static const double collisionScaleFactor = 0.01;
+		static const double collisionScaleFactor = 0.25;
 		static const double rodXrodSD = 0.328407 * collisionScaleFactor;
 		static const double rodXstringSD = 1.10272 * collisionScaleFactor;
 		static const double rodXweightSD = 0.883831 * collisionScaleFactor;

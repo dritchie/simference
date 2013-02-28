@@ -49,7 +49,8 @@ void keyboard(unsigned char key, int x, int y)
 
 	if (key == 's')
 	{
-		*derivationTree = DerivationTree<RealNum>::Derive(*axiom);
+		if (derivationTree) delete derivationTree;
+		derivationTree = new DerivationTree<RealNum>(*axiom);
 		if (mobile) delete mobile;
 		mobile = new Mobile<RealNum>(derivationTree->derivation, anchor);
 
@@ -91,7 +92,7 @@ void keyboard(unsigned char key, int x, int y)
 		static const unsigned int nCollisionSamples = 1000;
 		for (unsigned int i = 0; i < nCollisionSamples; i++)
 		{
-			auto dtree = DerivationTree<RealNum>::Derive(*axiom);
+			DerivationTree<RealNum> dtree(*axiom);
 			auto& dstring = dtree.derivation;
 			auto dmobile = new Mobile<RealNum>(dstring, anchor);
 			auto collsum = dmobile->checkStaticCollisions();
@@ -117,23 +118,24 @@ void keyboard(unsigned char key, int x, int y)
 		// Use stan's hmc to sample a bunch of parameter settings
 		// for the current derived structure.
 
-		static const unsigned int numHmcIters = 1000;
-		static const unsigned int numWarmup = 100;
+		static const unsigned int numHmcIters = 20;
+		static const unsigned int numWarmup = 5;
 
 		vector<var> params;
 		derivationTree->getParams(params);
 		vector<double> initParams;
 		for (auto var : params) initParams.push_back(var.val());
 
-		auto model = MobileModel(*derivationTree, anchor);
-		vector<ParamSample> samples;
-		GenerateSamples(model, initParams, samples, numHmcIters, numWarmup);
+		MobileModel model(*derivationTree, anchor);
+		vector<Sample> samples;
+		DiffusionSampler sampler(StructurePtr(derivationTree), model, initParams);
+		sampler.sample(samples, numHmcIters, numWarmup);
 
 		// Find the sample with highest log-probability and display that state
-		sort(samples.begin(), samples.end(), [](const ParamSample& s1, const ParamSample& s2) { return s1.logprob > s2.logprob; });
+		sort(samples.begin(), samples.end(), [](const Sample& s1, const Sample& s2) { return s1.logprob > s2.logprob; });
 		//unsigned seed = chrono::system_clock::now().time_since_epoch().count();
 		//shuffle(samples.begin(), samples.end(), default_random_engine(seed));
-		const ParamSample& bestsamp = samples[0];
+		const Sample& bestsamp = samples[0];
 		params.clear();
 		for (double d : bestsamp.params) params.push_back(var(d));
 		derivationTree->setParams(params);
@@ -160,7 +162,6 @@ int main(int argc, char** argv)
 	glutKeyboardFunc(keyboard);
 
 	axiom = new String;
-	derivationTree = new DerivationTree<RealNum>;
 
 	// We start with a single string (the string from which everything hangs)
 	auto root = new StringTerminal<RealNum>(0, 0);

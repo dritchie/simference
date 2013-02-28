@@ -176,14 +176,12 @@ namespace simference
 		{
 		public:
 
-			static DerivationTree<RealNum> Derive(const String& axiom)
+			DerivationTree(const String& axiom)
+				: roots(axiom)
 			{
-				DerivationTree<RealNum> dtree;
-				dtree.roots = axiom;
-				for (auto sym : dtree.roots)
+				for (auto sym : roots)
 					sym->unroll();
-				dtree.computeDerivation();
-				return dtree;
+				computeDerivation();
 			}
 
 			void printFullTree(std::ostream& out) const

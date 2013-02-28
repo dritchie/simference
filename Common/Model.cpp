@@ -41,7 +41,7 @@ namespace simference
 			return FactorParametersPtr(new FactorParameters(params_r));
 		}
 
-		var FactorModel::log_prob(const vector<var>& params_r) const
+		var FactorModel::log_prob(const vector<var>& params_r)
 		{
 			FactorParametersPtr params = wrapParameters(params_r);
 			var lp = 0.0;
@@ -130,7 +130,7 @@ namespace simference
 			assert(allModelsSameDimension);
 		}
 
-		var MixtureModel::log_prob(const vector<var>& params_r) const
+		var MixtureModel::log_prob(const vector<var>& params_r)
 		{
 			var lp = 0.0;
 			for (unsigned int i = 0; i < models.size(); i++)

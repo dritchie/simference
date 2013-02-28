@@ -8,6 +8,55 @@ namespace simference
 {
 	namespace Samplers
 	{
+		void Sampler::sample(std::vector<Sample>& samples,
+							// How many iterations to run sampling for.
+							int num_iterations,
+							// How many of the above iterations count as 'warm-up' (samples discarded)
+							int num_warmup,
+							// Automatically choose step size during warm-up?
+							bool epsilon_adapt,
+							// Keep every how many samples?
+							int num_thin,
+							// Save the warm-up samples?
+							bool save_warmup)
+		{
+			if (epsilon_adapt)
+			{
+				adaptOn();
+			}
+			for (int m = 0; m < num_iterations; ++m)
+			{
+				printf("Sampling iteration %d / %d\r", m+1, num_iterations);
+
+				Sample sample = nextSample();
+
+				if (m < num_warmup)
+				{
+					if (save_warmup && (m % num_thin) == 0)
+					{
+						samples.push_back(sample);
+					} 
+				}
+				else 
+				{
+					if (epsilon_adapt && adapting())
+					{
+						adaptOff();
+					}
+					if (((m - num_warmup) % num_thin) != 0)
+					{
+						continue;
+					}
+					else 
+					{
+						samples.push_back(sample);
+					}
+				}
+			}
+			printf("\n");
+		}
+
+
 		// So we can restrict stan::mcmc::nuts to a single translation unit--
 		// multiply-defined symbol errors will result otherwise.
 		typedef boost::mt19937 DiffusionRNG;
@@ -43,6 +92,21 @@ namespace simference
 			return Sample(structure, samp.params_r(), samp.log_prob());
 		}
 
+		void DiffusionSampler::adaptOn()
+		{
+			implementation->adapt_on();
+		}
+
+		void DiffusionSampler::adaptOff()
+		{
+			implementation->adapt_off();
+		}
+
+		bool DiffusionSampler::adapting()
+		{
+			return implementation->adapting();
+		}
+
 		JumpSampler::JumpSampler(FactorTemplateModelPtr m, StructurePtr initStruct,
 			const vector<double>& initParams,
 			unsigned int nAnnealingSteps,
@@ -68,6 +132,21 @@ namespace simference
 				currentParams = s.params;
 				return s;
 			}
+		}
+
+		void JumpSampler::adaptOn()
+		{
+			innerSampler->adaptOn();
+		}
+
+		void JumpSampler::adaptOff()
+		{
+			innerSampler->adaptOff();
+		}
+
+		bool JumpSampler::adapting()
+		{
+			return innerSampler->adapting();
 		}
 
 		Sample JumpSampler::executeJumpMove()
@@ -147,65 +226,6 @@ namespace simference
 			for (unsigned int index : matching.paramIndexMap)
 				transp.push_back(params[index]);
 			return transp;
-		}
-
-
-		void GenerateSamples(stan::model::prob_grad_ad& model,
-							// Initial parameters
-							const std::vector<double>& params,
-							// Store generated samples here
-							std::vector<ParamSample>& samples,
-							// How many iterations to run sampling for.
-							int num_iterations,
-							// How many of the above iterations count as 'warm-up' (samples discarded)
-							int num_warmup,
-							// Automatically choose step size during warm-up?
-							bool epsilon_adapt,
-							// Keep every how many samples?
-							int num_thin,
-							// Save the warm-up samples?
-							bool save_warmup)
-		{
-			stan::mcmc::nuts<boost::mt19937> sampler(model, 10, -1, 0.0, true, 0.6, 0.05, boost::mt19937((uint32_t)std::time(0)), &params);
-
-			std::vector<int> params_i;	// A dummy
-			sampler.set_params(params,params_i);
-
-			if (epsilon_adapt)
-			{
-				sampler.adapt_on(); 
-			}
-			for (int m = 0; m < num_iterations; ++m)
-			{
-				printf("Sampling iteration %d / %d\r", m+1, num_iterations);
-
-				auto s = sampler.next();
-				ParamSample sample = ParamSample(s.params_r(), s.log_prob());
-
-				if (m < num_warmup)
-				{
-					if (save_warmup && (m % num_thin) == 0)
-					{
-						samples.push_back(sample);
-					} 
-				}
-				else 
-				{
-					if (epsilon_adapt && sampler.adapting())
-					{
-						sampler.adapt_off();
-					}
-					if (((m - num_warmup) % num_thin) != 0)
-					{
-						sampler.next();
-					}
-					else 
-					{
-						samples.push_back(sample);
-					}
-				}
-			}
-			printf("\n");
 		}
 	}
 }

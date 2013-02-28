@@ -23,6 +23,21 @@ namespace simference
 		{
 		public:
 			virtual Sample nextSample() = 0;
+			virtual void adaptOn() = 0;
+			virtual void adaptOff() = 0;
+			virtual bool adapting() = 0;
+
+			void sample(std::vector<Sample>& samples,
+						// How many iterations to run sampling for.
+						int num_iterations = 1000,
+						// How many of the above iterations count as 'warm-up' (samples discarded)
+						int num_warmup = 100,
+						// Automatically choose step size during warm-up?
+						bool epsilon_adapt = true,
+						// Keep every how many samples?
+						int num_thin = 1,
+						// Save the warm-up samples?
+						bool save_warmup = false);
 		};
 
 		class DiffusionSamplerImpl;
@@ -33,6 +48,9 @@ namespace simference
 			~DiffusionSampler();
 			void reinitialize(StructurePtr s, Models::Model& m, const std::vector<double>& initParams);
 			Sample nextSample();
+			void adaptOn();
+			void adaptOff();
+			bool adapting();
 		private:
 			DiffusionSamplerImpl* implementation;
 			StructurePtr structure;
@@ -51,6 +69,9 @@ namespace simference
 				double jumpFreq = 0.1);
 
 			Sample nextSample();
+			void adaptOn();
+			void adaptOff();
+			bool adapting();
 
 		protected:
 
@@ -74,35 +95,6 @@ namespace simference
 			unsigned int numAnnealingSteps;
 			double jumpFrequency;
 		};
-
-
-		// TODO: Integrate this with the rest of the Sampler code
-
-		class ParamSample
-		{
-		public:
-			ParamSample(const std::vector<double>& p, double lp)
-				: params(p), logprob(lp) {}
-			ParamSample() : logprob(0.0) {}
-			std::vector<double> params;
-			double logprob;
-		};
-
-		void GenerateSamples(stan::model::prob_grad_ad& model,
-							// Initial parameters
-							const std::vector<double>& params,
-							// Store generated samples here
-							std::vector<ParamSample>& samples,
-							// How many iterations to run sampling for.
-							int num_iterations = 1000,
-							// How many of the above iterations count as 'warm-up' (samples discarded)
-							int num_warmup = 100,
-							// Automatically choose step size during warm-up?
-							bool epsilon_adapt = true,
-							// Keep every how many samples?
-							int num_thin = 1,
-							// Save the warm-up samples?
-							bool save_warmup = false);
 	}
 }
 

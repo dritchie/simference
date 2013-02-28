@@ -32,7 +32,7 @@ namespace simference
 		{
 		public:
 			Model(unsigned int nParams) : prob_grad_ad(nParams) {}
-			virtual stan::agrad::var log_prob(const std::vector<stan::agrad::var>& params_r) const = 0; 
+			virtual stan::agrad::var log_prob(const std::vector<stan::agrad::var>& params_r) = 0; 
 			stan::agrad::var log_prob(std::vector<stan::agrad::var>& params_r, 
 				std::vector<int>& params_i,
 				std::ostream* output_stream = 0)
@@ -78,7 +78,7 @@ namespace simference
 		{
 		public:
 			Factor(StructurePtr s) : structUnrolledFrom(s) {}
-			virtual stan::agrad::var log_prob(FactorParametersPtr params) const = 0;
+			virtual stan::agrad::var log_prob(FactorParametersPtr params) = 0;
 
 		protected:
 			friend class FactorModel;
@@ -91,7 +91,7 @@ namespace simference
 		{
 		public:
 			FactorModel(StructurePtr s, unsigned int nParams, const std::vector<FactorPtr>& fs);
-			stan::agrad::var log_prob(const std::vector<stan::agrad::var>& params_r) const; 
+			stan::agrad::var log_prob(const std::vector<stan::agrad::var>& params_r); 
 
 		protected:
 			virtual FactorParametersPtr wrapParameters(const std::vector<stan::agrad::var>& params_r) const;
@@ -148,7 +148,7 @@ namespace simference
 		public:
 			MixtureModel(const std::vector<ModelPtr>& ms, const std::vector<double>& ws);
 			MixtureModel(const std::vector<ModelPtr>& ms);
-			stan::agrad::var log_prob(const std::vector<stan::agrad::var>& params_r) const;
+			stan::agrad::var log_prob(const std::vector<stan::agrad::var>& params_r);
 			std::vector<double>& getWeights() { return weights; }
 
 		private:
