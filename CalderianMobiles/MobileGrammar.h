@@ -1,7 +1,7 @@
 #ifndef __MOBILE_GRAMMAR_H
 #define __MOBILE_GRAMMAR_H
 
-#include "../Common/PCFG.h"
+#include "../Common/Grammar.h"
 
 namespace simference
 {
