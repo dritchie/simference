@@ -118,8 +118,8 @@ void keyboard(unsigned char key, int x, int y)
 		// Use stan's hmc to sample a bunch of parameter settings
 		// for the current derived structure.
 
-		static const unsigned int numHmcIters = 20;
-		static const unsigned int numWarmup = 5;
+		static const unsigned int numHmcIters = 1000;
+		static const unsigned int numWarmup = 100;
 
 		vector<var> params;
 		derivationTree->getParams(params);
@@ -128,7 +128,7 @@ void keyboard(unsigned char key, int x, int y)
 
 		MobileModel model(*derivationTree, anchor);
 		vector<Sample> samples;
-		DiffusionSampler sampler(StructurePtr(derivationTree), model, initParams);
+		DiffusionSampler sampler(StructurePtr(NULL), model, initParams);
 		sampler.sample(samples, numHmcIters, numWarmup);
 
 		// Find the sample with highest log-probability and display that state
