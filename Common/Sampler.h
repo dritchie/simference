@@ -3,7 +3,6 @@
 
 #include "Model.h"
 #include "Distributions.h"
-#include <stan/mcmc/nuts.hpp>
 
 namespace simference
 {
@@ -26,14 +25,16 @@ namespace simference
 			virtual Sample nextSample() = 0;
 		};
 
-		typedef boost::mt19937 DiffusionRNG;
-		class DiffusionSampler : public Sampler, public stan::mcmc::nuts<DiffusionRNG>
+		class DiffusionSamplerImpl;
+		class DiffusionSampler : public Sampler
 		{
 		public:
 			DiffusionSampler(StructurePtr s, Models::Model& m, const std::vector<double>& initParams);
+			~DiffusionSampler();
 			void reinitialize(StructurePtr s, Models::Model& m, const std::vector<double>& initParams);
 			Sample nextSample();
 		private:
+			DiffusionSamplerImpl* implementation;
 			StructurePtr structure;
 		};
 
@@ -45,9 +46,9 @@ namespace simference
 		public:
 
 			JumpSampler(Models::FactorTemplateModelPtr m, StructurePtr initStruct,
-				        const std::vector<double>& initParams,
-						unsigned int nAnnealingSteps = 50,
-						double jumpFreq = 0.1);
+				const std::vector<double>& initParams,
+				unsigned int nAnnealingSteps = 50,
+				double jumpFreq = 0.1);
 
 			Sample nextSample();
 
@@ -56,10 +57,10 @@ namespace simference
 			virtual StructurePtr jumpProposal() = 0;
 
 			virtual void dimensionMatch(StructurePtr sFrom, const std::vector<double>& pFrom,
-										StructurePtr sTo, std::vector<double>& pTo, DimensionMatchMap& matching) = 0;
+				StructurePtr sTo, std::vector<double>& pTo, DimensionMatchMap& matching) = 0;
 
 			virtual double logProposalProbability(StructurePtr sFrom, const std::vector<double>& pFrom,
-												  StructurePtr sTo, const std::vector<double>& pTo) = 0;
+				StructurePtr sTo, const std::vector<double>& pTo) = 0;
 
 			Sample executeJumpMove();
 
@@ -73,6 +74,35 @@ namespace simference
 			unsigned int numAnnealingSteps;
 			double jumpFrequency;
 		};
+
+
+		// TODO: Integrate this with the rest of the Sampler code
+
+		class ParamSample
+		{
+		public:
+			ParamSample(const std::vector<double>& p, double lp)
+				: params(p), logprob(lp) {}
+			ParamSample() : logprob(0.0) {}
+			std::vector<double> params;
+			double logprob;
+		};
+
+		void GenerateSamples(stan::model::prob_grad_ad& model,
+							// Initial parameters
+							const std::vector<double>& params,
+							// Store generated samples here
+							std::vector<ParamSample>& samples,
+							// How many iterations to run sampling for.
+							int num_iterations = 1000,
+							// How many of the above iterations count as 'warm-up' (samples discarded)
+							int num_warmup = 100,
+							// Automatically choose step size during warm-up?
+							bool epsilon_adapt = true,
+							// Keep every how many samples?
+							int num_thin = 1,
+							// Save the warm-up samples?
+							bool save_warmup = false);
 	}
 }
 

@@ -86,7 +86,7 @@ namespace simference
 			vector<FactorPtr> factors;
 			for (auto t : templates)
 				t->unroll(s, factors);
-			new FactorModel(s, s->numParams(), factors);
+			return ModelPtr(new FactorModel(s, s->numParams(), factors));
 		}
 
 		void FactorTemplateModel::unroll(StructurePtr sOld, StructurePtr sNew, const DimensionMatchMap& dimMatch,

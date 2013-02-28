@@ -117,7 +117,7 @@ namespace simference
 				weightXstringN, weightXweightN;
 		};
 
-		Mobile(String<RealNum> derivation, const Eigen::Vector3d& anchor);
+		Mobile(String derivation, const Eigen::Vector3d& anchor);
 
 		void render() const;
 		void updateAnchors(const Eigen::Vector3d& a)
@@ -146,12 +146,12 @@ namespace simference
 
 
 	template<typename RealNum>
-	Mobile<RealNum>::Mobile(String<RealNum> derivation, const Eigen::Vector3d& anchor)
+	Mobile<RealNum>::Mobile(String derivation, const Eigen::Vector3d& anchor)
 	{
 		function<ComponentPtr(NodeCode*)> helper = [&helper, &derivation](NodeCode* code) -> ComponentPtr
 		{
-			SymbolPtr head = derivation.symbols.back();
-			derivation.symbols.pop_back();
+			SymbolPtr head = derivation.back();
+			derivation.pop_back();
 			if (head->is<StringTerminal<RealNum>>())
 			{
 				auto st = head->as<StringTerminal<RealNum>>();
@@ -173,7 +173,7 @@ namespace simference
 			else throw "Mobile::Mobile - Malformed input string!";
 		};
 
-		std::reverse(derivation.symbols.begin(), derivation.symbols.end());
+		std::reverse(derivation.begin(), derivation.end());
 		root = helper(NULL);
 		updateAnchors(anchor);
 	}

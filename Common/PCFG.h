@@ -2,6 +2,7 @@
 #define __PCFG_H
 
 #include "Distributions.h"
+#include "Model.h"
 #include <functional>
 #include <vector>
 #include <memory>
@@ -18,20 +19,29 @@ namespace simference
 		class Symbol
 		{
 		public:
+
+			Symbol(unsigned int d) : depth(d) {}
 			virtual bool isTerminal() const = 0;
 			virtual void print(std::ostream& outstream) const = 0;
+			virtual void unroll() = 0;
 			template<class T> bool is() { return dynamic_cast<T*>(this) != NULL; }
 			template<class T> T* as() { return dynamic_cast<T*>(this); }
+
+			unsigned int depth;	// in the derivation tree
 		};
 
 		typedef std::shared_ptr<Symbol> SymbolPtr;
+
+		typedef std::vector<SymbolPtr> String;
 
 		template<typename RealNum>
 		class Terminal : public Symbol
 		{
 		public:
 			typedef typename std::vector<RealNum>::const_iterator ParamIterator;
+			Terminal(unsigned int d) : Symbol(d) {}
 			bool isTerminal() const { return true; }
+			void unroll() {}
 			virtual RealNum paramLogProb() const = 0;
 			virtual unsigned int numParams() const = 0;
 			virtual void getParams(std::vector<RealNum>& p) const = 0;
@@ -43,8 +53,8 @@ namespace simference
 		{
 		public:
 
-			GeneralTerminal(Distribution<RealNum>** d)
-				: distribs(d)
+			GeneralTerminal(unsigned int d, Distribution<RealNum>** dis)
+				: Terminal(d), distribs(dis)
 			{
 				for (unsigned int i = 0; i < nParams; i++)
 					params[i] = distribs[i]->sample();
@@ -89,71 +99,6 @@ namespace simference
 			Distribution<RealNum>** distribs;
 		};
 
-		template<typename RealNum>
-		class String
-		{
-		public:
-
-			String(const std::vector<SymbolPtr>& syms, RealNum lp)
-				: logprob(lp), symbols(syms) {}
-
-			String() : logprob(0.0) {}
-
-			void print(std::ostream& out) const
-			{
-				for (auto sym : symbols)
-					sym->print(out);
-				out << endl;
-			}
-
-			RealNum structureLogProb() const { return logprob; }
-
-			RealNum paramLogProb() const
-			{
-				RealNum lp = 0.0;
-				for (auto sym : symbols)
-				{
-					if (sym->isTerminal())
-						lp += sym->as<Terminal<RealNum>>()->paramLogProb();
-				}
-				return lp;
-			}
-
-			RealNum totalLogProb() const { return structureLogProb() + paramLogProb(); }
-
-			unsigned int numParams() const
-			{
-				unsigned int n = 0;
-				for (auto sym : symbols)
-				{
-					if (sym->isTerminal())
-						n += sym->as<Terminal<RealNum>>()->numParams();
-				}
-				return n;
-			}
-
-			void getParams(std::vector<RealNum>& p) const
-			{
-				for (auto sym : symbols)
-				{
-					if (sym->isTerminal())
-						sym->as<Terminal<RealNum>>()->getParams(p);
-				}
-			}
-
-			void setParams(const std::vector<RealNum>& p)
-			{
-				auto it = p.begin();
-				for (auto sym : symbols)
-				{
-					if (sym->isTerminal())
-						sym->as<Terminal<RealNum>>()->setParams(it);
-				}
-			}
-
-			RealNum logprob;
-			std::vector<SymbolPtr> symbols;
-		};
 
 		// Forward declaration
 		template<typename RealNum> class Production;
@@ -163,9 +108,11 @@ namespace simference
 		{
 		public:
 
+			Variable(unsigned int d) : Symbol(d) {}
+
 			bool isTerminal() const { return false; }
 
-			String<RealNum> unroll()
+			void unroll()
 			{
 				// Accumulate the productions that are actually applicable
 				const vector<Production<RealNum>>& prods = productions();
@@ -189,16 +136,23 @@ namespace simference
 					probs[i] /= totalProb;
 
 				// Sample one proportional to its probability and use it to unroll
-				unsigned int indexToUse = (unsigned int)(MultinomialDistribution<RealNum>::Sample(probs));
-				const Production<RealNum>& prodToUse = prods[applicableProds[indexToUse]];
-				RealNum probability = probs[indexToUse];
-				auto symbols = prodToUse.unrollFunction(*this);
-				return String<RealNum>(symbols, log(probability));
+				unrolledProduction = MultinomialDistribution<RealNum>::Sample(probs);
+				const Production<RealNum>& prodToUse = prods[applicableProds[unrolledProduction]];
+				children = prodToUse.unrollFunction(*this);
+
+				// Recursively unroll all children
+				for (auto child : children)
+				{
+					child->unroll();
+				}
 			}
 
 			virtual const std::vector<Production<RealNum>>& productions() = 0;
+
+			String children;
+			unsigned int unrolledProduction;
 		};
-		
+
 		template<typename RealNum>
 		class Production
 		{
@@ -218,62 +172,124 @@ namespace simference
 		};
 
 		template<typename RealNum>
-		class DerivationTree
+		class DerivationTree : public Structure
 		{
 		public:
 
-			String<RealNum> derivedString() const
+			static DerivationTree<RealNum> Derive(const String& axiom)
 			{
-				// Linearize all terminal symbols (DFS order, insert children in reverse order)
-				String<RealNum> derivation;
+				DerivationTree<RealNum> dtree;
+				dtree.roots = axiom;
+				for (auto sym : dtree.roots)
+					sym->unroll();
+				dtree.computeDerivation();
+				return dtree;
+			}
+
+			void printFullTree(std::ostream& out) const
+			{
+				std::stack<SymbolPtr> fringe;
+				for (auto it = roots.rbegin(); it != roots.rend(); it++)
+					fringe.push(*it);
+				while (!fringe.empty())
+				{
+					SymbolPtr s  = fringe.top();
+					fringe.pop();
+					for (unsigned int i = 0; i < s->depth; i++)
+						out << "  ";
+					sym->print(out);
+					out << std::endl;
+				}
+			}
+
+			void printDerivation(std::ostream& out) const
+			{
+				for (auto sym : derivation)
+					sym->print(out);
+				out << std::endl;
+			}
+
+			RealNum structureLogProb() const
+			{
+				RealNum lp = 0.0;
+				for (auto sym : derivation)
+				{
+					if (!sym->isTerminal())
+					{
+						Variable<RealNum>* v = (Variable<RealNum>*)sym->as<Variable<RealNum>>();
+						lp += v->productions()[v->unrolledProduction].probabilityFunction(*v);
+					}
+				}
+			}
+
+			RealNum paramLogProb() const
+			{
+				RealNum lp = 0.0;
+				for (auto sym : derivation)
+				{
+					if (sym->isTerminal())
+						lp += sym->as<Terminal<RealNum>>()->paramLogProb();
+				}
+				return lp;
+			}
+
+			RealNum totalLogProb() const { return structureLogProb() + paramLogProb(); }
+
+			unsigned int numParams() const
+			{
+				unsigned int n = 0;
+				for (auto sym : derivation)
+				{
+					if (sym->isTerminal())
+						n += sym->as<Terminal<RealNum>>()->numParams();
+				}
+				return n;
+			}
+
+			void getParams(std::vector<RealNum>& p) const
+			{
+				for (auto sym : derivation)
+				{
+					if (sym->isTerminal())
+						sym->as<Terminal<RealNum>>()->getParams(p);
+				}
+			}
+
+			void setParams(const std::vector<RealNum>& p)
+			{
+				auto it = p.begin();
+				for (auto sym : derivation)
+				{
+					if (sym->isTerminal())
+						sym->as<Terminal<RealNum>>()->setParams(it);
+				}
+			}
+
+
+			void computeDerivation()
+			{
+				derivation.clear();
 				stack<SymbolPtr> fringe;
-				for (auto it = roots.symbols.rbegin(); it != roots.symbols.rend(); it++)
+				for (auto it = roots.rbegin(); it != roots.rend(); it++)
 					fringe.push(*it);
 				while (!fringe.empty())
 				{
 					SymbolPtr s = fringe.top();
 					fringe.pop();
 					if (s->isTerminal())
-						derivation.symbols.push_back(s);
+						derivation.push_back(s);
 					else
 					{
-						const String<RealNum>& succ = successorMap.at(s);
-						derivation.logprob += succ.logprob;
-						for (auto it = succ.symbols.rbegin(); it != succ.symbols.rend(); it++)
+						Variable<RealNum>* v = (Variable<RealNum>*)s->as<Variable<RealNum>>();
+						for (auto it = v->children.rbegin(); it != v->children.rend(); it++)
 							fringe.push(*it);
 					}
 				}
-				return derivation;
 			}
 
-			String<RealNum> roots;
-			std::unordered_map<SymbolPtr, String<RealNum> > successorMap;
+			String roots;
+			String derivation;
 		};
-
-		template<typename RealNum>
-		DerivationTree<RealNum> Derive(const String<RealNum>& axiom)
-		{
-			DerivationTree<RealNum> dtree;
-			dtree.roots = axiom;
-			dtree.roots.logprob = 0.0;
-
-			stack<SymbolPtr> fringe;
-			for (auto it = dtree.roots.symbols.rbegin(); it != dtree.roots.symbols.rend(); it++)
-				fringe.push(*it);
-			while (!fringe.empty())
-			{
-				SymbolPtr s = fringe.top();
-				fringe.pop();
-				if (!s->isTerminal())
-				{
-					Variable<RealNum>* var = (Variable<RealNum>*)(s.get());
-					auto& newsyms = dtree.successorMap[s] = var->unroll();
-					for (auto it = newsyms.symbols.rbegin(); it != newsyms.symbols.rend(); it++)
-						fringe.push(*it);
-				}
-			}		
-			return dtree;
-		}
 	}
 }
 

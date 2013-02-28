@@ -43,7 +43,7 @@ namespace simference
 			class StringTerminal : public GeneralTerminal<RealNum, 1>
 			{
 			public:
-				StringTerminal(unsigned int id) : GeneralTerminal(GetDistribs()), index(id) {}
+				StringTerminal(unsigned int depth, unsigned int id) : GeneralTerminal(depth, GetDistribs()), index(id) {}
 				char* name() const { return "String"; }
 				unsigned int index;
 				static Distribution<RealNum>* distribs[1];
@@ -60,7 +60,7 @@ namespace simference
 			class RodTerminal : public GeneralTerminal<RealNum, 2>
 			{
 			public:
-				RodTerminal() : GeneralTerminal(GetDistribs()) {}
+				RodTerminal(unsigned int depth) : GeneralTerminal(depth, GetDistribs()) {}
 				char* name() const { return "Rod"; }
 				static Distribution<RealNum>* distribs[2];
 				static Distribution<RealNum>** GetDistribs()
@@ -76,7 +76,7 @@ namespace simference
 			class WeightTerminal : public GeneralTerminal<RealNum, 1>
 			{
 			public:
-				WeightTerminal() : GeneralTerminal(GetDistribs()) {}
+				WeightTerminal(unsigned int depth) : GeneralTerminal(depth, GetDistribs()) {}
 				char* name() const { return "Weight"; }
 				static Distribution<RealNum>* distribs[1];
 				static Distribution<RealNum>** GetDistribs()
@@ -93,7 +93,7 @@ namespace simference
 			{
 			public:
 
-				StringEndpointVariable(unsigned int d) : depth(d) {}
+				StringEndpointVariable(unsigned int depth) : Variable(depth) {}
 
 				static std::vector<Production<RealNum>> InitProductionList()
 				{
@@ -105,14 +105,13 @@ namespace simference
 						// Probability expression: this rule gets more likely as depth increases
 						[](const Variable<RealNum>& v)
 					{
-						StringEndpointVariable<RealNum>* sev = (StringEndpointVariable<RealNum>*)(&v);
-						return sev->depth / (RealNum)(Parameters<RealNum>::Instance()->maxDepth);
+						return v.depth / (RealNum)(Parameters<RealNum>::Instance()->maxDepth);
 					},
 						// Unroll expression: replace the variable with a terminal weight with randomly-sampled mass
 						[](const Variable<RealNum>& v)
 					{
 						std::vector<SymbolPtr> s;
-						s.push_back(SymbolPtr(new WeightTerminal<RealNum>));
+						s.push_back(SymbolPtr(new WeightTerminal<RealNum>(v.depth+1)));
 						return s;
 					}
 					));
@@ -123,22 +122,20 @@ namespace simference
 						// Probability expression: this rule gets less likely as depth increases
 						[](const Variable<RealNum>& v)
 					{
-						StringEndpointVariable<RealNum>* sev = (StringEndpointVariable<RealNum>*)(&v);
-						return 1.0 - sev->depth / (RealNum)(Parameters<RealNum>::Instance()->maxDepth);
+						return 1.0 - v.depth / (RealNum)(Parameters<RealNum>::Instance()->maxDepth);
 					},
 						// Unroll expression
 						[](const Variable<RealNum>& v)
 					{
-						StringEndpointVariable<RealNum>* sev = (StringEndpointVariable<RealNum>*)(&v);
 						std::vector<SymbolPtr> s;
 						// Rod
-						s.push_back(SymbolPtr(new RodTerminal<RealNum>));
+						s.push_back(SymbolPtr(new RodTerminal<RealNum>(v.depth+1)));
 						// Left branch
-						s.push_back(SymbolPtr(new StringTerminal<RealNum>(0)));
-						s.push_back(SymbolPtr(new StringEndpointVariable<RealNum>(sev->depth+1)));
+						s.push_back(SymbolPtr(new StringTerminal<RealNum>(v.depth+1, 0)));
+						s.push_back(SymbolPtr(new StringEndpointVariable<RealNum>(v.depth+1)));
 						// Right branch
-						s.push_back(SymbolPtr(new StringTerminal<RealNum>(1)));
-						s.push_back(SymbolPtr(new StringEndpointVariable<RealNum>(sev->depth+1)));
+						s.push_back(SymbolPtr(new StringTerminal<RealNum>(v.depth+1, 1)));
+						s.push_back(SymbolPtr(new StringEndpointVariable<RealNum>(v.depth+1)));
 						return s;
 					}
 					));
@@ -149,7 +146,6 @@ namespace simference
 
 				void print(std::ostream& outstream) const { outstream << "SVar(" << depth << ")"; }
 
-				unsigned int depth;
 				static std::vector<Production<RealNum>> productionList;
 			};
 

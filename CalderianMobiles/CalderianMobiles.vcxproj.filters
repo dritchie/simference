@@ -33,9 +33,6 @@
     <ClInclude Include="..\Common\Math.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Common\Sampling.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="MobileModel.h">
       <Filter>Header Files</Filter>
     </ClInclude>

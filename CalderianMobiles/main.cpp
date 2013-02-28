@@ -1,4 +1,4 @@
-#include "../Common/Sampling.h"
+#include "../Common/Sampler.h"
 #include "MobileGrammar.h"
 #include "Mobile.h"
 #include "MobileModel.h"
@@ -8,6 +8,7 @@
 #include <GL/glut.h>
 
 using namespace simference;
+using namespace simference::Samplers;
 using namespace std;
 using namespace Eigen;
 using namespace stan::agrad;
@@ -17,8 +18,8 @@ typedef var RealNum;
 
 // I have to use pointers for everything because
 // agrad::var cannot be statically allocated safely.
-String<RealNum>* axiom = NULL;
-String<RealNum>* derivedString = NULL;
+String* axiom = NULL;
+DerivationTree<RealNum>* derivationTree = NULL;
 Mobile<RealNum>* mobile = NULL;
 Vector3d anchor(0.0, 9.5, 0.0);
 
@@ -48,12 +49,11 @@ void keyboard(unsigned char key, int x, int y)
 
 	if (key == 's')
 	{
-		auto dtree = Derive(*axiom);
-		*derivedString = dtree.derivedString();
+		*derivationTree = DerivationTree<RealNum>::Derive(*axiom);
 		if (mobile) delete mobile;
-		mobile = new Mobile<RealNum>(*derivedString, anchor);
+		mobile = new Mobile<RealNum>(derivationTree->derivation, anchor);
 
-		cout << "param log prob: " << derivedString->paramLogProb() << endl;
+		cout << "param log prob: " << derivationTree->paramLogProb() << endl;
 
 		needsRedisplay = true;
 	}
@@ -91,8 +91,8 @@ void keyboard(unsigned char key, int x, int y)
 		static const unsigned int nCollisionSamples = 1000;
 		for (unsigned int i = 0; i < nCollisionSamples; i++)
 		{
-			auto dtree = Derive(*axiom);
-			auto dstring = dtree.derivedString();
+			auto dtree = DerivationTree<RealNum>::Derive(*axiom);
+			auto& dstring = dtree.derivation;
 			auto dmobile = new Mobile<RealNum>(dstring, anchor);
 			auto collsum = dmobile->checkStaticCollisions();
 			torque += dmobile->softMaxTorqueNorm();
@@ -103,11 +103,6 @@ void keyboard(unsigned char key, int x, int y)
 			summ.rodXweight += collsum.rodXweight;
 			summ.weightXstring += collsum.weightXstring;
 			summ.weightXweight += collsum.weightXweight;
-			if (summ.weightXweight != summ.weightXweight)
-			{
-				dstring.print(cout);
-				while(true) {}
-			}
 		}
 		summ.rodXrod /= nCollisionSamples;
 		summ.rodXstring /= nCollisionSamples;
@@ -122,30 +117,30 @@ void keyboard(unsigned char key, int x, int y)
 		// Use stan's hmc to sample a bunch of parameter settings
 		// for the current derived structure.
 
-		static const unsigned int numHmcIters = 200;
-		static const unsigned int numWarmup = 50;
+		static const unsigned int numHmcIters = 1000;
+		static const unsigned int numWarmup = 100;
 
 		vector<var> params;
-		derivedString->getParams(params);
+		derivationTree->getParams(params);
 		vector<double> initParams;
 		for (auto var : params) initParams.push_back(var.val());
 
-		auto model = MobileModel(*derivedString, anchor);
-		vector<Sample> samples;
+		auto model = MobileModel(*derivationTree, anchor);
+		vector<ParamSample> samples;
 		GenerateSamples(model, initParams, samples, numHmcIters, numWarmup);
 
 		// Find the sample with highest log-probability and display that state
-		sort(samples.begin(), samples.end(), [](const Sample& s1, const Sample& s2) { return s1.logprob > s2.logprob; });
+		sort(samples.begin(), samples.end(), [](const ParamSample& s1, const ParamSample& s2) { return s1.logprob > s2.logprob; });
 		//unsigned seed = chrono::system_clock::now().time_since_epoch().count();
 		//shuffle(samples.begin(), samples.end(), default_random_engine(seed));
-		const Sample& bestsamp = samples[0];
+		const ParamSample& bestsamp = samples[0];
 		params.clear();
 		for (double d : bestsamp.params) params.push_back(var(d));
-		derivedString->setParams(params);
+		derivationTree->setParams(params);
 		mobile->updateAnchors();
 		needsRedisplay = true;
 
-		cout << "param log prob: " << derivedString->paramLogProb() << endl;
+		cout << "param log prob: " << derivationTree->paramLogProb() << endl;
 	}
 
 	if (needsRedisplay)
@@ -164,43 +159,14 @@ int main(int argc, char** argv)
 	glutReshapeFunc(reshape);
 	glutKeyboardFunc(keyboard);
 
-	axiom = new String<RealNum>;
-	derivedString = new String<RealNum>;
+	axiom = new String;
+	derivationTree = new DerivationTree<RealNum>;
 
 	// We start with a single string (the string from which everything hangs)
-	auto root = new StringTerminal<RealNum>(0);
+	auto root = new StringTerminal<RealNum>(0, 0);
 	root->params[StringLength] = 2.0;
-	axiom->symbols.push_back(SymbolPtr(root));
-	axiom->symbols.push_back(SymbolPtr(new StringEndpointVariable<RealNum>(0)));
-	
-
-	//// Root String
-	//auto root = new StringTerminal<RealNum>(0);
-	//root->params[StringLength] = 2.0;
-	//axiom->symbols.push_back(SymbolPtr(root));
-	//// Rod
-	//auto rod = new RodTerminal<RealNum>;
-	//rod->params[RodLength] = 3.0;
-	//rod->params[RodConnectPoint] = 0.75;
-	//axiom->symbols.push_back(SymbolPtr(rod));
-	//// Left string
-	//auto str1 = new StringTerminal<RealNum>(0);
-	//str1->params[StringLength] = 2.0;
-	//axiom->symbols.push_back(SymbolPtr(str1));
-	//// Left weight
-	//auto w1 = new WeightTerminal<RealNum>;
-	//w1->params[WeightRadius] = 0.35;
-	//axiom->symbols.push_back(SymbolPtr(w1));
-	//// Right string
-	//auto str2 = new StringTerminal<RealNum>(1);
-	//str2->params[StringLength] = 2.0;
-	//axiom->symbols.push_back(SymbolPtr(str2));
-	//// Right weight
-	//auto w2 = new WeightTerminal<RealNum>;
-	//w2->params[WeightRadius] = 0.5;
-	//axiom->symbols.push_back(SymbolPtr(w2));
-
-	//mobile = new Mobile<RealNum>(*axiom, anchor);
+	axiom->push_back(SymbolPtr(root));
+	axiom->push_back(SymbolPtr(new StringEndpointVariable<RealNum>(0)));
 
 	glutMainLoop();
 

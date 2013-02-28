@@ -1,4 +1,5 @@
 #include "Sampler.h"
+#include <stan/mcmc/nuts.hpp>
 
 using namespace std;
 using namespace simference::Models;
@@ -7,22 +8,38 @@ namespace simference
 {
 	namespace Samplers
 	{
+		// So we can restrict stan::mcmc::nuts to a single translation unit--
+		// multiply-defined symbol errors will result otherwise.
+		typedef boost::mt19937 DiffusionRNG;
+		class DiffusionSamplerImpl : public stan::mcmc::nuts<DiffusionRNG> 
+		{
+		public:
+			DiffusionSamplerImpl(Model& m, const vector<double>& initParams)
+				: nuts(m, 10, -1, 0.0, true, 0.6, 0.05, DiffusionRNG((uint32_t)time(0)), &initParams)
+			{}
+			friend class DiffusionSampler;
+		};
+
 		DiffusionSampler::DiffusionSampler(StructurePtr s, Model& m, const vector<double>& initParams)
-			:
-			nuts(m, 10, -1, 0.0, true, 0.6, 0.05, DiffusionRNG(time(0)), &initParams),
-			structure(s)
-		{}
+			: structure(s), implementation(new DiffusionSamplerImpl(m, initParams))
+		{
+		}
+
+		DiffusionSampler::~DiffusionSampler()
+		{
+			delete implementation;
+		}
 
 		void DiffusionSampler::reinitialize(StructurePtr s, Model& m, const vector<double>& initParams)
 		{
 			structure = s;
-			this->_model = m;
-			this->set_params_r(initParams);
+			implementation->_model = m;
+			implementation->set_params_r(initParams);
 		}
 
 		Sample DiffusionSampler::nextSample()
 		{
-			stan::mcmc::sample samp = next();	// Inherited from stan::mcmc::nuts
+			stan::mcmc::sample samp = implementation->next();
 			return Sample(structure, samp.params_r(), samp.log_prob());
 		}
 
@@ -130,6 +147,65 @@ namespace simference
 			for (unsigned int index : matching.paramIndexMap)
 				transp.push_back(params[index]);
 			return transp;
+		}
+
+
+		void GenerateSamples(stan::model::prob_grad_ad& model,
+							// Initial parameters
+							const std::vector<double>& params,
+							// Store generated samples here
+							std::vector<ParamSample>& samples,
+							// How many iterations to run sampling for.
+							int num_iterations,
+							// How many of the above iterations count as 'warm-up' (samples discarded)
+							int num_warmup,
+							// Automatically choose step size during warm-up?
+							bool epsilon_adapt,
+							// Keep every how many samples?
+							int num_thin,
+							// Save the warm-up samples?
+							bool save_warmup)
+		{
+			stan::mcmc::nuts<boost::mt19937> sampler(model, 10, -1, 0.0, true, 0.6, 0.05, boost::mt19937((uint32_t)std::time(0)), &params);
+
+			std::vector<int> params_i;	// A dummy
+			sampler.set_params(params,params_i);
+
+			if (epsilon_adapt)
+			{
+				sampler.adapt_on(); 
+			}
+			for (int m = 0; m < num_iterations; ++m)
+			{
+				printf("Sampling iteration %d / %d\r", m+1, num_iterations);
+
+				auto s = sampler.next();
+				ParamSample sample = ParamSample(s.params_r(), s.log_prob());
+
+				if (m < num_warmup)
+				{
+					if (save_warmup && (m % num_thin) == 0)
+					{
+						samples.push_back(sample);
+					} 
+				}
+				else 
+				{
+					if (epsilon_adapt && sampler.adapting())
+					{
+						sampler.adapt_off();
+					}
+					if (((m - num_warmup) % num_thin) != 0)
+					{
+						sampler.next();
+					}
+					else 
+					{
+						samples.push_back(sample);
+					}
+				}
+			}
+			printf("\n");
 		}
 	}
 }

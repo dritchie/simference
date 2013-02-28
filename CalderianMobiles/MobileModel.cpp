@@ -15,10 +15,10 @@ namespace simference
 	{
 		var lp = 0.0;
 
-		derivation.setParams(params_r);
+		derivationTree.setParams(params_r);
 		mobile.updateAnchors();
 
-		lp += derivation.paramLogProb();
+		lp += derivationTree.paramLogProb();
 
 		// Static collision factors
 		static const double collisionScaleFactor = 0.01;

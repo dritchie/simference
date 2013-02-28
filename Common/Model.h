@@ -9,8 +9,6 @@ namespace simference
 	class Structure
 	{
 	public:
-		virtual void getParams(std::vector<double>& params) const = 0;
-		virtual void setParams(const std::vector<double>& params) = 0;
 		virtual unsigned int numParams() const = 0;
 	};
 
@@ -46,7 +44,7 @@ namespace simference
 				return stan::model::prob_grad_ad::log_prob(params_r, dummy);
 			};
 		private:
-			vector<int> dummy;
+			std::vector<int> dummy;
 		};
 
 		typedef std::shared_ptr<Model> ModelPtr;
