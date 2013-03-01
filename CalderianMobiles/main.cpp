@@ -18,7 +18,7 @@ typedef var RealNum;
 
 // I have to use pointers for everything because
 // agrad::var cannot be statically allocated safely.
-String* axiom = NULL;
+String<RealNum>::type* axiom = NULL;
 DerivationTree<RealNum>* derivationTree = NULL;
 Mobile<RealNum>* mobile = NULL;
 Vector3d anchor(0.0, 9.5, 0.0);
@@ -161,13 +161,13 @@ int main(int argc, char** argv)
 	glutReshapeFunc(reshape);
 	glutKeyboardFunc(keyboard);
 
-	axiom = new String;
+	axiom = new String<RealNum>::type;
 
 	// We start with a single string (the string from which everything hangs)
 	auto root = new StringTerminal<RealNum>(0, 0);
 	root->params[StringLength] = 2.0;
-	axiom->push_back(SymbolPtr(root));
-	axiom->push_back(SymbolPtr(new StringEndpointVariable<RealNum>(0)));
+	axiom->push_back(SymbolPtr<RealNum>::type(root));
+	axiom->push_back(SymbolPtr<RealNum>::type(new StringEndpointVariable<RealNum>(0)));
 
 	glutMainLoop();
 

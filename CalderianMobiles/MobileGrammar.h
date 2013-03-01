@@ -93,6 +93,8 @@ namespace simference
 			{
 			public:
 
+				typedef typename SymbolPtr<RealNum>::type SymPtr;
+
 				StringEndpointVariable(unsigned int depth) : Variable(depth) {}
 
 				static std::vector<Production<RealNum>> InitProductionList()
@@ -110,8 +112,8 @@ namespace simference
 						// Unroll expression: replace the variable with a terminal weight with randomly-sampled mass
 						[](const Variable<RealNum>& v)
 					{
-						std::vector<SymbolPtr> s;
-						s.push_back(SymbolPtr(new WeightTerminal<RealNum>(v.depth+1)));
+						std::vector<SymPtr> s;
+						s.push_back(SymPtr(new WeightTerminal<RealNum>(v.depth+1)));
 						return s;
 					}
 					));
@@ -127,22 +129,22 @@ namespace simference
 						// Unroll expression
 						[](const Variable<RealNum>& v)
 					{
-						std::vector<SymbolPtr> s;
+						std::vector<SymPtr> s;
 						// Rod
-						s.push_back(SymbolPtr(new RodTerminal<RealNum>(v.depth+1)));
+						s.push_back(SymPtr(new RodTerminal<RealNum>(v.depth+1)));
 						// Left branch
-						s.push_back(SymbolPtr(new StringTerminal<RealNum>(v.depth+1, 0)));
-						s.push_back(SymbolPtr(new StringEndpointVariable<RealNum>(v.depth+1)));
+						s.push_back(SymPtr(new StringTerminal<RealNum>(v.depth+1, 0)));
+						s.push_back(SymPtr(new StringEndpointVariable<RealNum>(v.depth+1)));
 						// Right branch
-						s.push_back(SymbolPtr(new StringTerminal<RealNum>(v.depth+1, 1)));
-						s.push_back(SymbolPtr(new StringEndpointVariable<RealNum>(v.depth+1)));
+						s.push_back(SymPtr(new StringTerminal<RealNum>(v.depth+1, 1)));
+						s.push_back(SymPtr(new StringEndpointVariable<RealNum>(v.depth+1)));
 						return s;
 					}
 					));
 					return p;
 				}
 
-				const std::vector<Production<RealNum>>& productions() { return productionList; }
+				const std::vector<Production<RealNum>>& productions() const { return productionList; }
 
 				void print(std::ostream& outstream) const { outstream << "SVar(" << depth << ")"; }
 

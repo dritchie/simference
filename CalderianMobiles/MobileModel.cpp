@@ -18,7 +18,7 @@ namespace simference
 		lp += derivationTree.paramLogProb();
 
 		// Static collision factors
-		static const double collisionScaleFactor = 0.25;
+		static const double collisionScaleFactor = 0.33;
 		static const double rodXrodSD = 0.328407 * collisionScaleFactor;
 		static const double rodXstringSD = 1.10272 * collisionScaleFactor;
 		static const double rodXweightSD = 0.883831 * collisionScaleFactor;

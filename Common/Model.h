@@ -12,6 +12,8 @@ namespace simference
 		virtual unsigned int numParams() const = 0;
 	};
 
+	typedef std::shared_ptr<Structure> StructurePtr;
+
 	class DimensionMatchMap
 	{
 	public:
@@ -24,7 +26,37 @@ namespace simference
 		Direction direction;
 	};
 
-	typedef std::shared_ptr<Structure> StructurePtr;
+	template <typename RealNum>
+	class ParameterVector
+	{
+	public:
+		ParameterVector(const std::vector<RealNum>& p)
+			: params(p) {}
+		virtual const RealNum& operator[] (unsigned int i) const { return params[i]; }
+		virtual size_t size() const { return params.size(); }
+	protected:
+		const std::vector<stan::agrad::var>& params;
+	};
+
+	template <typename RealNum>
+	class DimensionMatchedParameterVector : public ParameterVector<RealNum>
+	{
+	public:
+		DimensionMatchedParameterVector(const std::vector<RealNum>& p,
+			const std::vector<unsigned int>& imap)
+			: ParameterVector(p), indexMap(imap) {}
+		const RealNum& operator[] (unsigned int i) const { return params[indexMap[i]]; }
+		size_t size() const { return indexMap.size(); }
+	protected:
+		const std::vector<unsigned int>& indexMap;
+	};
+
+	template <typename RealNum>
+	class ParameterVectorPtr
+	{
+	public:
+		typedef std::shared_ptr<ParameterVector<RealNum>> type;
+	};
 
 	namespace Models
 	{
@@ -49,36 +81,11 @@ namespace simference
 
 		typedef std::shared_ptr<Model> ModelPtr;
 
-		class FactorParameters
-		{
-		public:
-			FactorParameters(const std::vector<stan::agrad::var>& p)
-				: params(p) {}
-			virtual const stan::agrad::var& operator[] (unsigned int i) const;
-			virtual size_t size() const;
-		protected:
-			const std::vector<stan::agrad::var>& params;
-		};
-
-		class DimensionMatchedFactorParameters : public FactorParameters
-		{
-		public:
-			DimensionMatchedFactorParameters(const std::vector<stan::agrad::var>& p,
-				const std::vector<unsigned int>& imap)
-				: FactorParameters(p), indexMap(imap) {}
-			const stan::agrad::var& operator[] (unsigned int i) const;
-			size_t size() const;
-		protected:
-			const std::vector<unsigned int>& indexMap;
-		};
-
-		typedef std::shared_ptr<FactorParameters> FactorParametersPtr;
-
 		class Factor
 		{
 		public:
 			Factor(StructurePtr s) : structUnrolledFrom(s) {}
-			virtual stan::agrad::var log_prob(FactorParametersPtr params) = 0;
+			virtual stan::agrad::var log_prob(const ParameterVector<stan::agrad::var>& params) = 0;
 
 		protected:
 			friend class FactorModel;
@@ -94,7 +101,7 @@ namespace simference
 			stan::agrad::var log_prob(const std::vector<stan::agrad::var>& params_r); 
 
 		protected:
-			virtual FactorParametersPtr wrapParameters(const std::vector<stan::agrad::var>& params_r) const;
+			virtual ParameterVectorPtr<stan::agrad::var>::type wrapParameters(const std::vector<stan::agrad::var>& params_r) const;
 			StructurePtr structUnrolledFrom;
 			std::vector<FactorPtr> factors;
 		};
@@ -107,7 +114,7 @@ namespace simference
 				: FactorModel(s, nParams, fs), paramIndexMap(pim) {}
 
 		protected:
-			FactorParametersPtr wrapParameters(const std::vector<stan::agrad::var>& params_r) const;
+			ParameterVectorPtr<stan::agrad::var>::type wrapParameters(const std::vector<stan::agrad::var>& params_r) const;
 			std::vector<unsigned int> paramIndexMap;
 		};
 

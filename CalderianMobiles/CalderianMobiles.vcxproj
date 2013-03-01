@@ -64,6 +64,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Common\GrammarInference.cpp" />
     <ClCompile Include="..\Common\Model.cpp" />
     <ClCompile Include="..\Common\Sampler.cpp" />
     <ClCompile Include="main.cpp" />
@@ -74,6 +75,7 @@
     <ClInclude Include="..\Common\DAD.h" />
     <ClInclude Include="..\Common\Distributions.h" />
     <ClInclude Include="..\Common\Grammar.h" />
+    <ClInclude Include="..\Common\GrammarInference.h" />
     <ClInclude Include="..\Common\Math.h" />
     <ClInclude Include="..\Common\Model.h" />
     <ClInclude Include="..\Common\Sampler.h" />

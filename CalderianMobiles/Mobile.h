@@ -117,7 +117,7 @@ namespace simference
 				weightXstringN, weightXweightN;
 		};
 
-		Mobile(String derivation, const Eigen::Vector3d& anchor);
+		Mobile(typename String<RealNum>::type derivation, const Eigen::Vector3d& anchor);
 
 		void render() const;
 		void updateAnchors(const Eigen::Vector3d& a)
@@ -146,11 +146,11 @@ namespace simference
 
 
 	template<typename RealNum>
-	Mobile<RealNum>::Mobile(String derivation, const Eigen::Vector3d& anchor)
+	Mobile<RealNum>::Mobile(typename String<RealNum>::type derivation, const Eigen::Vector3d& anchor)
 	{
 		function<ComponentPtr(NodeCode*)> helper = [&helper, &derivation](NodeCode* code) -> ComponentPtr
 		{
-			SymbolPtr head = derivation.back();
+			auto head = derivation.back();
 			derivation.pop_back();
 			if (head->is<StringTerminal<RealNum>>())
 			{
