@@ -232,7 +232,7 @@ namespace simference
 		public:
 
 			DerivationTree(const typename String<RealNum>::type& axiom)
-				: roots(axiom)
+				: roots(axiom), provenance(NULL)
 			{
 				for (auto sym : roots)
 					sym->unroll();
@@ -313,7 +313,7 @@ namespace simference
 			void computeDerivation()
 			{
 				derivation.clear();
-				stack<SymbolPtr<RealNum>::type> fringe;
+				stack<typename SymbolPtr<RealNum>::type> fringe;
 				for (auto it = roots.rbegin(); it != roots.rend(); it++)
 					fringe.push(*it);
 				while (!fringe.empty())
@@ -331,8 +331,38 @@ namespace simference
 				}
 			}
 
+			void variables(typename String<RealNum>::type& vars) const
+			{
+				stack<typename SymbolPtr<RealNum>::type> fringe;
+				for (auto it = roots.rbegin(); it != roots.rend(); it++)
+					fringe.push(*it);
+				while (!fringe.empty())
+				{
+					auto s = fringe.top();
+					fringe.pop();
+					if (s->is<Variable<RealNum>>())
+						vars.push_back(s);
+					if (s->numChildren() > 0)
+					{
+						const auto& children = s->children();
+						for (auto it = children.crbegin(); it != children.crend(); it++)
+							fringe.push(*it);
+					}
+				}
+			}
+
 			typename String<RealNum>::type roots;
 			typename String<RealNum>::type derivation;
+
+			class Provenance
+			{
+			public:
+				std::shared_ptr<DerivationTree<RealNum>> modifiedFrom;
+				// We could at some point generalize this to be an arbitrary number of old/new subtree pairs?
+				typename SymbolPtr<RealNum>::type oldSubtreeRoot;
+				typename SymbolPtr<RealNum>::type newSubtreeRoot;
+			};
+			std::shared_ptr<Provenance> provenance;
 		};
 	}
 }

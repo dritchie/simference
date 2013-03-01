@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CalderianMobiles", "CalderianMobiles.vcxproj", "{05A84510-DD83-421A-9D09-D4B49EB675EB}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CalderianMobiles", "CalderianMobiles\CalderianMobiles.vcxproj", "{05A84510-DD83-421A-9D09-D4B49EB675EB}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StanTest", "..\StanTest\StanTest.vcxproj", "{812AD5B7-4732-41D2-A917-E5CA2F23BD73}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StanTest", "StanTest\StanTest.vcxproj", "{812AD5B7-4732-41D2-A917-E5CA2F23BD73}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
