@@ -33,6 +33,7 @@ namespace simference
 			virtual void setParams(const ParameterVector<RealNum>& p, unsigned int& pindex) {}
 			virtual unsigned int numChildren() const { return 0; }
 			virtual const std::vector< std::shared_ptr<Symbol<RealNum>> >& children() const = 0;
+			virtual std::shared_ptr<Symbol<RealNum>> deepCopy() const = 0;
 			template<class T> bool is() { return dynamic_cast<T*>(this) != NULL; }
 			template<class T> T* as() { return dynamic_cast<T*>(this); }
 
@@ -100,6 +101,16 @@ namespace simference
 				}
 			}
 
+			virtual GeneralTerminal<RealNum, nParams>* copy() const = 0;
+
+			typename SymbolPtr<RealNum>::type deepCopy() const
+			{
+				auto gt = copy();
+				for (unsigned int i = 0; i < nParams; i++)
+					gt->params[i] = params[i];
+				return SymbolPtr<RealNum>::type(gt);
+			}
+
 			void print(std::ostream& outstream) const
 			{
 				outstream << name() << "(";
@@ -158,6 +169,17 @@ namespace simference
 				{
 					child->unroll();
 				}
+			}
+
+			virtual Variable<RealNum>* copy() const = 0;
+
+			typename SymbolPtr<RealNum>::type deepCopy() const
+			{
+				auto v = copy();
+				v->unrolledProduction = unrolledProduction;
+				for (auto s : childSyms)
+					v->childSyms.push_back(s->deepCopy());
+				return SymbolPtr<RealNum>::type(v);
 			}
 
 			unsigned int numChildren() const
@@ -232,10 +254,26 @@ namespace simference
 		public:
 
 			DerivationTree(const typename String<RealNum>::type& axiom)
-				: roots(axiom), provenance(NULL)
+				: roots(axiom)
 			{
 				for (auto sym : roots)
 					sym->unroll();
+				computeDerivation();
+			}
+
+			DerivationTree(const DerivationTree<RealNum>& dt)
+			{
+				provenance = dt.provenance;
+				for (auto r : dt.roots)
+					roots.push_back(r->deepCopy());
+				computeDerivation();
+
+				// We don't update provenance here...that only happens in LARJ proposals
+			}
+
+			void reroll(Variable<RealNum>& v)
+			{
+				v.unroll();
 				computeDerivation();
 			}
 
@@ -309,7 +347,6 @@ namespace simference
 					sym->setParams(p, pindex);
 			}
 
-
 			void computeDerivation()
 			{
 				derivation.clear();
@@ -357,12 +394,13 @@ namespace simference
 			class Provenance
 			{
 			public:
+				Provenance() : modifiedFrom(NULL), oldSubtreeRoot(NULL), newSubtreeRoot(NULL) {}
 				std::shared_ptr<DerivationTree<RealNum>> modifiedFrom;
 				// We could at some point generalize this to be an arbitrary number of old/new subtree pairs?
 				typename SymbolPtr<RealNum>::type oldSubtreeRoot;
 				typename SymbolPtr<RealNum>::type newSubtreeRoot;
 			};
-			std::shared_ptr<Provenance> provenance;
+			Provenance provenance;
 		};
 	}
 }

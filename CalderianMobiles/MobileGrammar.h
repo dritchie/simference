@@ -45,6 +45,7 @@ namespace simference
 			public:
 				StringTerminal(unsigned int depth, unsigned int id) : GeneralTerminal(depth, GetDistribs()), index(id) {}
 				char* name() const { return "String"; }
+				StringTerminal<RealNum>* copy() const { return new StringTerminal<RealNum>(depth, index); }
 				unsigned int index;
 				static Distribution<RealNum>* distribs[1];
 				static Distribution<RealNum>** GetDistribs()
@@ -62,6 +63,7 @@ namespace simference
 			public:
 				RodTerminal(unsigned int depth) : GeneralTerminal(depth, GetDistribs()) {}
 				char* name() const { return "Rod"; }
+				RodTerminal<RealNum>* copy() const { return new RodTerminal<RealNum>(depth); }
 				static Distribution<RealNum>* distribs[2];
 				static Distribution<RealNum>** GetDistribs()
 				{
@@ -78,6 +80,7 @@ namespace simference
 			public:
 				WeightTerminal(unsigned int depth) : GeneralTerminal(depth, GetDistribs()) {}
 				char* name() const { return "Weight"; }
+				WeightTerminal<RealNum>* copy() const { return new WeightTerminal<RealNum>(depth); }
 				static Distribution<RealNum>* distribs[1];
 				static Distribution<RealNum>** GetDistribs()
 				{
@@ -142,6 +145,11 @@ namespace simference
 					}
 					));
 					return p;
+				}
+
+				StringEndpointVariable<RealNum>* copy() const
+				{
+					return new StringEndpointVariable<RealNum>(depth);
 				}
 
 				const std::vector<Production<RealNum>>& productions() const { return productionList; }
