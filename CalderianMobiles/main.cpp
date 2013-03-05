@@ -127,9 +127,12 @@ void keyboard(unsigned char key, int x, int y)
 		vector<double> initParams;
 		for (auto var : params) initParams.push_back(var.val());
 
-		MobileModel model(*derivationTree, anchor);
+		FactorTemplateModel ftm;
+		ftm.addTemplate(FactorTemplatePtr(new GrammarFactorTemplate));
+		ftm.addTemplate(FactorTemplatePtr(new MobileFactorTemplate(anchor)));
+		ModelPtr model = ftm.unroll(derivationTree);
 		vector<Sample> samples;
-		DiffusionSampler sampler(StructurePtr(NULL), model, initParams);
+		DiffusionSampler sampler(StructurePtr(NULL), *model, initParams);
 		sampler.sample(samples, numHmcIters, numWarmup);
 
 		// Find the sample with highest log-probability and display that state
@@ -182,6 +185,7 @@ void keyboard(unsigned char key, int x, int y)
 		vector<double> p; for (auto var : params) p.push_back(var.val());
 		FactorTemplateModelPtr ftmp = FactorTemplateModelPtr(new FactorTemplateModel);
 		ftmp->addTemplate(FactorTemplatePtr(new GrammarFactorTemplate));
+		ftmp->addTemplate(FactorTemplatePtr(new MobileFactorTemplate(anchor)));
 		GrammarJumpSampler gs(ftmp, derivationTree, p);
 
 		vector<Sample> samples;

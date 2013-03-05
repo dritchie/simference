@@ -6,23 +6,26 @@
 
 namespace simference
 {
-	// For a fixed derivation from the grammar, this model
-	// returns the log probability of parameter settings to that derivation.
-	class MobileModel : public Models::Model
+	namespace Models
 	{
-	public:
-		MobileModel(Grammar::DerivationTree<stan::agrad::var>& dtree,
-			        const Eigen::Vector3d& anchor)
-			:
-		Model(dtree.numParams()),
-		derivationTree(dtree),
-		mobile(dtree.derivation, anchor) {}
+		class MobileFactorTemplate : public FactorTemplate
+		{
+		public:
+			MobileFactorTemplate(const Eigen::Vector3d& a) : anchor(a) {}
+			void unroll(StructurePtr s, std::vector<FactorPtr>& factors) const;
 
-		stan::agrad::var log_prob(const std::vector<stan::agrad::var>& params_r);
-	private:
-		Grammar::DerivationTree<stan::agrad::var>& derivationTree;
-		Mobile<stan::agrad::var> mobile;
-	};
+			class Factor : public simference::Models::Factor
+			{
+			public:
+				Factor(StructurePtr s, const Eigen::Vector3d& anchor);
+				stan::agrad::var log_prob(const ParameterVector<stan::agrad::var>& params);
+			private:
+				Mobile<stan::agrad::var> mobile;
+			};
+		private:
+			Eigen::Vector3d anchor;
+		};
+	}
 }
 
 #endif
