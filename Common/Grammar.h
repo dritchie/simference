@@ -279,19 +279,23 @@ namespace simference
 
 			void printFullTree(std::ostream& out) const
 			{
-				std::stack<SymbolPtr> fringe;
+				std::stack<typename SymbolPtr<RealNum>::type> fringe;
 				for (auto it = roots.rbegin(); it != roots.rend(); it++)
 					fringe.push(*it);
 				while (!fringe.empty())
 				{
-					SymbolPtr s  = fringe.top();
+					typename SymbolPtr<RealNum>::type s = fringe.top();
 					fringe.pop();
 					for (unsigned int i = 0; i < s->depth; i++)
 						out << "  ";
-					sym->print(out);
+					s->print(out);
 					out << std::endl;
-					for (auto s : children)
-						fringe.push(s);
+					if (s->numChildren() > 0)
+					{
+						const auto& children = s->children();
+						for (auto it = children.rbegin(); it != children.rend(); it++)
+							fringe.push(*it);
+					}
 				}
 			}
 

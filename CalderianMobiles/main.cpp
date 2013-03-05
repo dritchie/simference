@@ -1,4 +1,5 @@
 #include "../Common/Sampler.h"
+#include "../Common/GrammarInference.h"
 #include "MobileGrammar.h"
 #include "Mobile.h"
 #include "MobileModel.h"
@@ -9,6 +10,7 @@
 
 using namespace simference;
 using namespace simference::Samplers;
+using namespace simference::Models;
 using namespace std;
 using namespace Eigen;
 using namespace stan::agrad;
@@ -19,7 +21,7 @@ typedef var RealNum;
 // I have to use pointers for everything because
 // agrad::var cannot be statically allocated safely.
 String<RealNum>::type* axiom = NULL;
-DerivationTree<RealNum>* derivationTree = NULL;
+shared_ptr<DerivationTree<RealNum>> derivationTree = shared_ptr<DerivationTree<RealNum>>(NULL);
 Mobile<RealNum>* mobile = NULL;
 Vector3d anchor(0.0, 9.5, 0.0);
 
@@ -49,8 +51,7 @@ void keyboard(unsigned char key, int x, int y)
 
 	if (key == 's')
 	{
-		if (derivationTree) delete derivationTree;
-		derivationTree = new DerivationTree<RealNum>(*axiom);
+		derivationTree = shared_ptr<DerivationTree<RealNum>>(new DerivationTree<RealNum>(*axiom));
 		if (mobile) delete mobile;
 		mobile = new Mobile<RealNum>(derivationTree->derivation, anchor);
 
@@ -143,6 +144,26 @@ void keyboard(unsigned char key, int x, int y)
 		needsRedisplay = true;
 
 		cout << "param log prob: " << derivationTree->paramLogProb() << endl;
+	}
+	else if (key == 'j')
+	{
+		// Testing grammar jump sampling stuff
+		vector<var> params; derivationTree->getParams(params);
+		vector<double> p; for (auto var : params) p.push_back(var.val());
+		FactorTemplateModelPtr ftmp = FactorTemplateModelPtr(new FactorTemplateModel);
+		ftmp->addTemplate(FactorTemplatePtr(new GrammarFactorTemplate));
+		GrammarJumpSampler gs(ftmp, derivationTree, p);
+
+		// We have to reset the params because when we initialized the sampler, it
+		// computed some gradients, which clobbers the vars in the derivationTree.
+		params.clear(); for (auto d : p) params.push_back(d);
+		derivationTree->setParams(params);
+
+		StructurePtr newstruct = gs.jumpProposalTest();
+		derivationTree = static_pointer_cast<DerivationTree<RealNum>>(newstruct);
+		if (mobile) delete mobile;
+		mobile = new Mobile<RealNum>(derivationTree->derivation, anchor);
+		needsRedisplay = true;
 	}
 
 	if (needsRedisplay)
