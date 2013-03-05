@@ -147,19 +147,27 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	else if (key == 'j')
 	{
-		// Testing grammar jump sampling stuff
+		// Test out jump proposals
 		vector<var> params; derivationTree->getParams(params);
 		vector<double> p; for (auto var : params) p.push_back(var.val());
 		FactorTemplateModelPtr ftmp = FactorTemplateModelPtr(new FactorTemplateModel);
 		ftmp->addTemplate(FactorTemplatePtr(new GrammarFactorTemplate));
 		GrammarJumpSampler gs(ftmp, derivationTree, p);
 
-		// We have to reset the params because when we initialized the sampler, it
+		// We have to reset the original params because when we initialized the sampler, it
 		// computed some gradients, which clobbers the vars in the derivationTree.
 		params.clear(); for (auto d : p) params.push_back(d);
 		derivationTree->setParams(params);
 
+		// Make proposal
 		StructurePtr newstruct = gs.jumpProposalTest();
+
+		// Check that dimension matching works
+		DimensionMatchMap matching;
+		vector<double> p2;
+		gs.dimensionMatchTest(derivationTree, p, newstruct, p2, matching);
+
+		// Visualize the result
 		derivationTree = static_pointer_cast<DerivationTree<RealNum>>(newstruct);
 		if (mobile) delete mobile;
 		mobile = new Mobile<RealNum>(derivationTree->derivation, anchor);
