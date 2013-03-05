@@ -188,15 +188,14 @@ namespace simference
 			vector<var> unifiedSubtreeParams;
 			if (sFrom->numParams() <= sTo->numParams())
 			{
-				// We have more more new params than old, so concatenate old with new.
+				// We have more more new params than old, so concatenate old with the extra new ones.
 				unifiedSubtreeParams.insert(unifiedSubtreeParams.end(), oldTreeParams.begin(), oldTreeParams.end());
-				unifiedSubtreeParams.insert(unifiedSubtreeParams.end(), newTreeParams.begin(), newTreeParams.end());
+				unifiedSubtreeParams.insert(unifiedSubtreeParams.end(), newTreeParams.begin() + oldTreeParams.size(), newTreeParams.end());
 			}
 			else
 			{
-				// We have more old params than new, so truncate the old param list
-				unsigned int numNewParams = newTreeParams.size();
-				unifiedSubtreeParams.insert(unifiedSubtreeParams.end(), oldTreeParams.begin(), oldTreeParams.begin() + numNewParams);
+				// We have more old params than new, so the new param list is literally just the old one
+				unifiedSubtreeParams = oldTreeParams;
 			}
 
 			// Insert the unified subtree param list into the overall param list

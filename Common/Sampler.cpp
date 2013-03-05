@@ -66,6 +66,10 @@ namespace simference
 			DiffusionSamplerImpl(Model& m, const vector<double>& initParams)
 				: nuts(m, 10, -1, 0.0, true, 0.6, 0.05, DiffusionRNG((uint32_t)time(0)), &initParams)
 			{}
+			// This constructor assumes that epsilon adaptation is done
+			DiffusionSamplerImpl(Model& m, const vector<double>& initParams, const DiffusionSamplerImpl& prev)
+				: nuts(m, 10, prev._epsilon, 0.0, false, 0.6, 0.05, prev._rand_int, &initParams)
+			{}
 			friend class DiffusionSampler;
 		};
 
@@ -82,8 +86,9 @@ namespace simference
 		void DiffusionSampler::reinitialize(StructurePtr s, Model& m, const vector<double>& initParams)
 		{
 			structure = s;
-			implementation->_model = m;
-			implementation->set_params_r(initParams);
+			auto oldimpl = implementation;
+			implementation = new DiffusionSamplerImpl(m, initParams, *oldimpl);
+			delete oldimpl;
 		}
 
 		Sample DiffusionSampler::nextSample()
@@ -187,7 +192,7 @@ namespace simference
 				weights[2] = 1.0;
 				lastAnnealingState = innerSampler->nextSample();
 				double currAnnealingLp = lastAnnealingState.logprob;
-				if (!isnan(prevAnnealingLp))
+				if (prevAnnealingLp != prevAnnealingLp)
 					annealingLpRatio += (prevAnnealingLp - currAnnealingLp);
 				prevAnnealingLp = currAnnealingLp;
 			}
@@ -226,6 +231,51 @@ namespace simference
 			for (unsigned int index : matching.paramIndexMap)
 				transp.push_back(params[index]);
 			return transp;
+		}
+
+		void JumpSampler::sample(vector<Sample>& samples,
+								int num_iterations,
+								int num_warmup ,
+								bool epsilon_adapt,
+								int num_thin,
+								bool save_warmup)
+		{
+			// Almost identical to superclass method, except we don't start dimension jumping
+			// until after warm-up.
+			if (epsilon_adapt)
+			{
+				adaptOn();
+			}
+			for (int m = 0; m < num_iterations; ++m)
+			{
+				printf("Sampling iteration %d / %d\r", m+1, num_iterations);
+
+				if (m < num_warmup)
+				{
+					Sample sample = innerSampler->nextSample();
+					if (save_warmup && (m % num_thin) == 0)
+					{
+						samples.push_back(sample);
+					} 
+				}
+				else 
+				{
+					if (epsilon_adapt && adapting())
+					{
+						adaptOff();
+					}
+					Sample sample = nextSample();
+					if (((m - num_warmup) % num_thin) != 0)
+					{
+						continue;
+					}
+					else 
+					{
+						samples.push_back(sample);
+					}
+				}
+			}
+			printf("\n");
 		}
 	}
 }

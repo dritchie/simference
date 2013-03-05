@@ -173,6 +173,32 @@ void keyboard(unsigned char key, int x, int y)
 		mobile = new Mobile<RealNum>(derivationTree->derivation, anchor);
 		needsRedisplay = true;
 	}
+	else if (key == 'l')
+	{
+		static const unsigned int numLARJiters = 1000;
+		static const unsigned int numLARJwarmup = 100;
+		// Test LARJ sampling
+		vector<var> params; derivationTree->getParams(params);
+		vector<double> p; for (auto var : params) p.push_back(var.val());
+		FactorTemplateModelPtr ftmp = FactorTemplateModelPtr(new FactorTemplateModel);
+		ftmp->addTemplate(FactorTemplatePtr(new GrammarFactorTemplate));
+		GrammarJumpSampler gs(ftmp, derivationTree, p);
+
+		vector<Sample> samples;
+		gs.sample(samples, numLARJiters, numLARJwarmup);
+
+		// Find the sample with highest log-probability and display that state
+		sort(samples.begin(), samples.end(), [](const Sample& s1, const Sample& s2) { return s1.logprob > s2.logprob; });
+		//unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+		//shuffle(samples.begin(), samples.end(), default_random_engine(seed));
+		const Sample& bestsamp = samples[0];
+		derivationTree = static_pointer_cast<DerivationTree<RealNum>>(bestsamp.structure);
+		params.clear();
+		for (double d : bestsamp.params) params.push_back(var(d));
+		derivationTree->setParams(params);
+		mobile->updateAnchors();
+		needsRedisplay = true;
+	}
 
 	if (needsRedisplay)
 		glutPostRedisplay();

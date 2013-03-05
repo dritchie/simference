@@ -27,17 +27,17 @@ namespace simference
 			virtual void adaptOff() = 0;
 			virtual bool adapting() = 0;
 
-			void sample(std::vector<Sample>& samples,
-						// How many iterations to run sampling for.
-						int num_iterations = 1000,
-						// How many of the above iterations count as 'warm-up' (samples discarded)
-						int num_warmup = 100,
-						// Automatically choose step size during warm-up?
-						bool epsilon_adapt = true,
-						// Keep every how many samples?
-						int num_thin = 1,
-						// Save the warm-up samples?
-						bool save_warmup = false);
+			virtual void sample(std::vector<Sample>& samples,
+								// How many iterations to run sampling for.
+								int num_iterations = 1000,
+								// How many of the above iterations count as 'warm-up' (samples discarded)
+								int num_warmup = 100,
+								// Automatically choose step size during warm-up?
+								bool epsilon_adapt = true,
+								// Keep every how many samples?
+								int num_thin = 1,
+								// Save the warm-up samples?
+								bool save_warmup = false);
 		};
 
 		class DiffusionSamplerImpl;
@@ -72,6 +72,13 @@ namespace simference
 			void adaptOn();
 			void adaptOff();
 			bool adapting();
+
+			void sample(std::vector<Sample>& samples,
+						int num_iterations = 1000,
+						int num_warmup = 100,
+						bool epsilon_adapt = true,
+						int num_thin = 1,
+						bool save_warmup = false);
 
 		protected:
 
