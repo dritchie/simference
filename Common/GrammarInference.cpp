@@ -19,9 +19,9 @@ namespace simference
 		void GrammarFactorTemplate::unroll(StructurePtr sOld, StructurePtr sNew,
 			std::vector<FactorPtr>& fOld, std::vector<FactorPtr>& fNew, std::vector<FactorPtr>& fShared) const
 		{
-			auto dtOld = static_cast<DerivationTree<var>*>(sOld.get());
-			auto dtNew = static_cast<DerivationTree<var>*>(sNew.get());
-			assert(dtNew->provenance.modifiedFrom.get() == dtOld);
+			auto dtOld = static_pointer_cast<DerivationTree<var>>(sOld);
+			auto dtNew = static_pointer_cast<DerivationTree<var>>(sNew);
+			assert(dtNew->provenance.modifiedFrom == dtOld);
 
 			String<var>::type root;
 			unordered_set<SymbolPtr<var>::type> exclude;
@@ -63,7 +63,7 @@ namespace simference
 			var lp = 0.0;
 
 			// Set the parameters of the derivation
-			static_cast<DerivationTree<var>*>(structUnrolledFrom.get())->setParams(params);
+			static_pointer_cast<DerivationTree<var>>(structUnrolledFrom)->setParams(params);
 
 			// Accumulate probabilities for all the symbols we've been told to care about
 			for (auto s : syms)
@@ -99,8 +99,8 @@ namespace simference
 			};
 
 			// Deep copy
-			auto currdt = static_cast<DerivationTree<var>*>(currentStruct.get());
-			auto newdt = new DerivationTree<var>(*currdt);
+			auto currdt = static_pointer_cast<DerivationTree<var>>(currentStruct);
+			auto newdt = shared_ptr<DerivationTree<var>>(new DerivationTree<var>(*currdt));
 			
 			// Decide which variable to reroll
 			vector<SymbolPtr<var>::type> currvars, newvars;
@@ -120,7 +120,7 @@ namespace simference
 
 			// Record the forward and reverse probabilities (as well as the structures)
 			lastStructJumpedFrom = currentStruct;
-			lastStructJumpedTo = StructurePtr(newdt);
+			lastStructJumpedTo = newdt;
 			lastJumpForwardLp = MultinomialDistribution<double>::Prob(whichVar, probabilities) + newvars[whichVar]->recursiveStructureLogProb().val();
 			newvars.clear();
 			probabilities.clear();
@@ -141,9 +141,9 @@ namespace simference
 			// Build the map (should be pretty simple)
 
 			// Unboxing and checks
-			auto dtFrom = static_cast<DerivationTree<var>*>(sFrom.get());
-			auto dtTo = static_cast<DerivationTree<var>*>(sTo.get());
-			assert(dtTo->provenance.modifiedFrom.get() == dtFrom);
+			auto dtFrom = static_pointer_cast<DerivationTree<var>>(sFrom);
+			auto dtTo = static_pointer_cast<DerivationTree<var>>(sTo);
+			assert(dtTo->provenance.modifiedFrom == dtFrom);
 
 			auto linearizeParams = [](const String<var>::type& roots, SymbolPtr<var>::type skip, vector<var>& outParams, unsigned int& skipPoint)
 			{
@@ -169,6 +169,10 @@ namespace simference
 				}
 			};
 
+			// Set the current structure parameters
+			vector<var> currP; for (auto p : currentParams) currP.push_back(p);
+			dtFrom->setParams(currP);
+			
 			// Linearize parameters, but skip the old subtree
 			vector<var> params;
 			unsigned int skipPoint;

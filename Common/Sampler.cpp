@@ -74,7 +74,8 @@ namespace simference
 		};
 
 		DiffusionSampler::DiffusionSampler(StructurePtr s, Model& m, const vector<double>& initParams)
-			: structure(s), implementation(new DiffusionSamplerImpl(m, initParams))
+			: structure(s), implementation(new DiffusionSamplerImpl(m, initParams)), prevParams(initParams),
+			numMovesAttempted(0), numMovesAccepted(0)
 		{
 		}
 
@@ -89,11 +90,27 @@ namespace simference
 			auto oldimpl = implementation;
 			implementation = new DiffusionSamplerImpl(m, initParams, *oldimpl);
 			delete oldimpl;
+			prevParams = initParams;
+			numMovesAttempted = numMovesAccepted = 0;
+		}
+
+		bool DiffusionSampler::paramsEqual(const std::vector<double>& p1, const std::vector<double>& p2)
+		{
+			for (unsigned int i = 0; i < p1.size(); i++)
+			{
+				if (p1[i] != p2[i])
+					return false;
+			}
+			return true;
 		}
 
 		Sample DiffusionSampler::nextSample()
 		{
+			numMovesAttempted++;
+			prevParams = implementation->_x;
 			stan::mcmc::sample samp = implementation->next();
+			if (!paramsEqual(samp.params_r(), prevParams))
+				numMovesAccepted++;
 			return Sample(structure, samp.params_r(), samp.log_prob());
 		}
 
@@ -118,7 +135,10 @@ namespace simference
 			double jumpFreq)
 			:
 		templateModel(m), currentStruct(initStruct), numAnnealingSteps(nAnnealingSteps),
-			jumpFrequency(jumpFreq), currentParams(initParams)
+			jumpFrequency(jumpFreq), currentParams(initParams),
+			numDiffusionMovesAttempted(0), numDiffusionMovesAccepted(0),
+			numJumpMovesAttempted(0), numJumpMovesAccepted(0),
+			numAnnealingMovesAttempted(0), numAnnealingMovesAccepted(0)
 		{
 			currentUnrolledModel = templateModel->unroll(initStruct);
 			innerSampler = DiffusionSamplerPtr(new DiffusionSampler(initStruct, *currentUnrolledModel, initParams));
@@ -133,7 +153,10 @@ namespace simference
 			}
 			else
 			{
+				numDiffusionMovesAttempted++;
+				unsigned int prevNumAccepted = innerSampler->numMovesAccepted;
 				Sample s = innerSampler->nextSample();
+				numDiffusionMovesAccepted += (innerSampler->numMovesAccepted - prevNumAccepted);
 				currentParams = s.params;
 				return s;
 			}
@@ -156,12 +179,12 @@ namespace simference
 
 		Sample JumpSampler::executeJumpMove()
 		{
+			numJumpMovesAttempted++;
+
 			double currLp = currentUnrolledModel->log_prob(currentParams);
 
-			// Propose new structure
+			// Propose new structure and do dimension matching
 			StructurePtr newStruct = jumpProposal();
-
-			// Do dimension matching
 			std::vector<double> matchedParams;
 			DimensionMatchMap dimMatchMap;
 			dimensionMatch(currentStruct, currentParams, newStruct, matchedParams, dimMatchMap);
@@ -192,10 +215,12 @@ namespace simference
 				weights[2] = 1.0;
 				lastAnnealingState = innerSampler->nextSample();
 				double currAnnealingLp = lastAnnealingState.logprob;
-				if (prevAnnealingLp != prevAnnealingLp)
+				if (prevAnnealingLp == prevAnnealingLp)
 					annealingLpRatio += (prevAnnealingLp - currAnnealingLp);
 				prevAnnealingLp = currAnnealingLp;
 			}
+			numAnnealingMovesAttempted += innerSampler->numMovesAttempted;
+			numAnnealingMovesAccepted += innerSampler->numMovesAccepted;
 
 			// Accept or reject the new structure
 			const vector<double>& propParams = lastAnnealingState.params;
@@ -219,9 +244,11 @@ namespace simference
 				currentStruct = newStruct;
 				currentParams = propParams;
 				currLp = propLp;
-				currentUnrolledModel = templateModel->unroll(currentStruct);
-				innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
+				numJumpMovesAccepted++;
 			}
+			currentUnrolledModel = templateModel->unroll(currentStruct);
+			innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
+
 			return Sample(currentStruct, currentParams, currLp);
 		}
 
@@ -276,6 +303,29 @@ namespace simference
 				}
 			}
 			printf("\n");
+		}
+
+		void JumpSampler::writeAnalytics(std::ostream& out) const
+		{
+			out << "-----------------------------------------------" << endl;
+			out << "           JumpSampler Analytics               " << endl;
+			out << "-----------------------------------------------" << endl;
+			out << " Diffusion Stats:" << endl;
+			out << "	Attempted Moves: " << numDiffusionMovesAttempted << endl;
+			out << "	Accepted Moves:  " << numDiffusionMovesAccepted << endl;
+			out << "	Percentage:      " << ((double)numDiffusionMovesAccepted)/numDiffusionMovesAttempted << endl;
+			out << "-----------------------------------------------" << endl;
+			out << " Annealing Stats:" << endl;
+			out << "	Attempted Moves: " << numAnnealingMovesAttempted << endl;
+			out << "	Accepted Moves:  " << numAnnealingMovesAccepted << endl;
+			out << "	Percentage:      " << ((double)numAnnealingMovesAccepted)/numAnnealingMovesAttempted << endl;
+			out << "-----------------------------------------------" << endl;
+			out << " Jump Stats:" << endl;
+			out << "	Attempted Moves: " << numJumpMovesAttempted << endl;
+			out << "	Accepted Moves:  " << numJumpMovesAccepted << endl;
+			out << "	Percentage:      " << ((double)numJumpMovesAccepted)/numJumpMovesAttempted << endl;
+			out << "-----------------------------------------------" << endl;
+			out << endl;
 		}
 	}
 }

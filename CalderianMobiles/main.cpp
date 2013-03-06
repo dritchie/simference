@@ -179,7 +179,8 @@ void keyboard(unsigned char key, int x, int y)
 	else if (key == 'l')
 	{
 		static const unsigned int numLARJiters = 1000;
-		static const unsigned int numLARJwarmup = 100;
+		static const unsigned int numLARJwarmup = 0;	// TODO: Reset this to 100
+
 		// Test LARJ sampling
 		vector<var> params; derivationTree->getParams(params);
 		vector<double> p; for (auto var : params) p.push_back(var.val());
@@ -190,6 +191,8 @@ void keyboard(unsigned char key, int x, int y)
 
 		vector<Sample> samples;
 		gs.sample(samples, numLARJiters, numLARJwarmup);
+
+		gs.writeAnalytics(cout);
 
 		// Find the sample with highest log-probability and display that state
 		sort(samples.begin(), samples.end(), [](const Sample& s1, const Sample& s2) { return s1.logprob > s2.logprob; });

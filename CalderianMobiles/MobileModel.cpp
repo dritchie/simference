@@ -46,9 +46,7 @@ namespace simference
 			// Static equilibrium factor
 			//static const double eqScaleFactor = 0.15;
 			static const double eqScaleFactor = 0.001;
-			//static const double torqueSD = 135.0 * eqScaleFactor;
 			static const double torqueSD = 360.0 * eqScaleFactor;
-			//lp += NormalDistribution<var>::LogProb(mobile.netTorqueNorm(), 0.0, torqueSD);
 			lp += NormalDistribution<var>::LogProb(mobile.softMaxTorqueNorm(), 0.0, torqueSD);
 
 			return lp;

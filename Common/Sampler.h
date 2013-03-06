@@ -51,9 +51,17 @@ namespace simference
 			void adaptOn();
 			void adaptOff();
 			bool adapting();
+			static bool paramsEqual(const std::vector<double>& p1, const std::vector<double>& p2);
 		private:
 			DiffusionSamplerImpl* implementation;
 			StructurePtr structure;
+			
+			// Analytics
+			std::vector<double> prevParams;
+			unsigned int numMovesAttempted;
+			unsigned int numMovesAccepted;
+
+			friend class JumpSampler;
 		};
 
 		typedef std::shared_ptr<DiffusionSampler> DiffusionSamplerPtr;
@@ -80,6 +88,8 @@ namespace simference
 						int num_thin = 1,
 						bool save_warmup = false);
 
+			void writeAnalytics(std::ostream& out) const;
+
 		protected:
 
 			virtual StructurePtr jumpProposal() = 0;
@@ -101,6 +111,14 @@ namespace simference
 			std::vector<double> currentParams;
 			unsigned int numAnnealingSteps;
 			double jumpFrequency;
+
+			// Analytics
+			unsigned int numDiffusionMovesAttempted;
+			unsigned int numDiffusionMovesAccepted;
+			unsigned int numJumpMovesAttempted;
+			unsigned int numJumpMovesAccepted;
+			unsigned int numAnnealingMovesAttempted;
+			unsigned int numAnnealingMovesAccepted;
 		};
 	}
 }

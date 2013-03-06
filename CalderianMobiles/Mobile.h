@@ -383,8 +383,7 @@ namespace simference
 		{
 			torqueNorms[i] = rods[i]->torque().norm();
 		}
-		//RealNum hmax = *(std::max_element(torqueNorms.begin(), torqueNorms.end()));
-		RealNum smax =  Math::softMax(torqueNorms, 0.25);
+		RealNum smax = Math::softMax(torqueNorms, 0.25);
 		return smax;
 	}
 
