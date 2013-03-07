@@ -203,23 +203,6 @@ namespace simference
 			currentUnrolledModel = ModelPtr(mixModel);
 			innerSampler->reinitialize(newStruct, *currentUnrolledModel, matchedParams);
 
-			//// TEST
-			//static bool firstTime = true;
-			//if (firstTime)
-			//	firstTime = false;
-			//else
-			//{
-			//	vector<int> dummy;
-			//	vector<double> gradient;
-			//	innerSampler->reinitialize(newStruct, *currentUnrolledModel, matchedParams);
-			//	innerSampler->nextSample();
-			//	//currentUnrolledModel->grad_log_prob(matchedParams, dummy, gradient);
-			//	currentUnrolledModel = templateModel->unroll(currentStruct);
-			//	//cout << endl;
-			//	//stan::agrad::print_stack(cout);
-				//currentUnrolledModel->grad_log_prob(currentParams, dummy, gradient);
-			//}
-
 			// Run the inner HMC kernel for numAnnealingSteps
 			// Adjust the temperature of the factors each step
 			// Accumulate log probability of each intermediate state
