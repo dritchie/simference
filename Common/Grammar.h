@@ -81,7 +81,9 @@ namespace simference
 			{
 				RealNum lp = 0.0;
 				for (unsigned int i = 0; i < nParams; i++)
+				{
 					lp += distribs[i]->logprob(params[i]);
+				}
 				return lp;
 			}
 
@@ -195,7 +197,7 @@ namespace simference
 			RealNum logProb() const
 			{
 				if (childSyms.size() > 0)
-					return productions()[unrolledProduction].probabilityFunction(*this);
+					return log(productions()[unrolledProduction].probabilityFunction(*this));
 				else return 0.0;
 			}
 

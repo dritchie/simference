@@ -121,12 +121,12 @@ namespace simference
 			// Record the forward and reverse probabilities (as well as the structures)
 			lastStructJumpedFrom = currentStruct;
 			lastStructJumpedTo = newdt;
-			lastJumpForwardLp = MultinomialDistribution<double>::Prob(whichVar, probabilities) + newvars[whichVar]->recursiveStructureLogProb().val();
+			lastJumpForwardLp = log(MultinomialDistribution<double>::Prob(whichVar, probabilities)) + newvars[whichVar]->recursiveStructureLogProb().val();
 			newvars.clear();
 			probabilities.clear();
 			newdt->variables(newvars);
 			variableUnrollProbs(newvars, probabilities);
-			lastJumpReverseLp = MultinomialDistribution<double>::Prob(whichVar, probabilities) + currvars[whichVar]->recursiveStructureLogProb().val();
+			lastJumpReverseLp = log(MultinomialDistribution<double>::Prob(whichVar, probabilities)) + currvars[whichVar]->recursiveStructureLogProb().val();
 			
 			return lastStructJumpedTo;
 		}
@@ -192,7 +192,7 @@ namespace simference
 			vector<var> unifiedSubtreeParams;
 			if (sFrom->numParams() <= sTo->numParams())
 			{
-				// We have more more new params than old, so concatenate old with the extra new ones.
+				// We have more new params than old, so concatenate old with the extra new ones.
 				unifiedSubtreeParams.insert(unifiedSubtreeParams.end(), oldTreeParams.begin(), oldTreeParams.end());
 				unifiedSubtreeParams.insert(unifiedSubtreeParams.end(), newTreeParams.begin() + oldTreeParams.size(), newTreeParams.end());
 			}

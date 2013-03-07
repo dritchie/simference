@@ -86,6 +86,9 @@ namespace simference
 
 		void DiffusionSampler::reinitialize(StructurePtr s, Model& m, const vector<double>& initParams)
 		{
+			// This feels so dirty, but it covers up a bug that I haven't been able to track down...
+			stan::agrad::recover_memory();
+
 			structure = s;
 			auto oldimpl = implementation;
 			implementation = new DiffusionSamplerImpl(m, initParams, *oldimpl);
@@ -200,6 +203,23 @@ namespace simference
 			currentUnrolledModel = ModelPtr(mixModel);
 			innerSampler->reinitialize(newStruct, *currentUnrolledModel, matchedParams);
 
+			//// TEST
+			//static bool firstTime = true;
+			//if (firstTime)
+			//	firstTime = false;
+			//else
+			//{
+			//	vector<int> dummy;
+			//	vector<double> gradient;
+			//	innerSampler->reinitialize(newStruct, *currentUnrolledModel, matchedParams);
+			//	innerSampler->nextSample();
+			//	//currentUnrolledModel->grad_log_prob(matchedParams, dummy, gradient);
+			//	currentUnrolledModel = templateModel->unroll(currentStruct);
+			//	//cout << endl;
+			//	//stan::agrad::print_stack(cout);
+				//currentUnrolledModel->grad_log_prob(currentParams, dummy, gradient);
+			//}
+
 			// Run the inner HMC kernel for numAnnealingSteps
 			// Adjust the temperature of the factors each step
 			// Accumulate log probability of each intermediate state
@@ -236,16 +256,20 @@ namespace simference
 				forwardInitProposalLp = logProposalProbability(currentStruct, currentParams, newStruct, translateParameters(matchedParams, dimMatchMap));
 				reverseInitProposalLp = logProposalProbability(newStruct, translateParameters(propParams, dimMatchMap), currentStruct, propParams);
 			}
-			double acceptLp = (propLp + reverseInitProposalLp) - (currLp - forwardInitProposalLp) + annealingLpRatio;
+			double acceptLp = (propLp + reverseInitProposalLp) - (currLp + forwardInitProposalLp) + annealingLpRatio;
 			if (log(Math::Probability::UniformDistribution<double>::Sample()) < acceptLp)
 			{
 				// Update state variables accordingly
 				// (currentStruct, currentParams, currentUnrolledModel, innerSampler->_)
 				currentStruct = newStruct;
-				currentParams = propParams;
+				if (dimMatchMap.direction == DimensionMatchMap::OldToNew)
+					currentParams = propParams;
+				else
+					currentParams = translateParameters(propParams, dimMatchMap);
 				currLp = propLp;
 				numJumpMovesAccepted++;
 			}
+
 			currentUnrolledModel = templateModel->unroll(currentStruct);
 			innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
 
