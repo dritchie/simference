@@ -8,6 +8,16 @@ namespace simference
 {
 	namespace Samplers
 	{
+		void Sample::print(std::ostream& out) const
+		{
+			string propStr;
+			if (proposalType == Jump)
+				propStr = "Jump";
+			if (proposalType == Diffusion)
+				propStr = "Diffusion";
+			out << "[Sample] ProposalType: " << propStr << " | Accepted: " << accepted << endl;
+		}
+
 		void Sampler::sample(std::vector<Sample>& samples,
 							// How many iterations to run sampling for.
 							int num_iterations,
@@ -112,9 +122,13 @@ namespace simference
 			numMovesAttempted++;
 			prevParams = implementation->_x;
 			stan::mcmc::sample samp = implementation->next();
+			bool moveAccepted = false;
 			if (!paramsEqual(samp.params_r(), prevParams))
+			{
+				moveAccepted = true;
 				numMovesAccepted++;
-			return Sample(structure, samp.params_r(), samp.log_prob());
+			}
+			return Sample(structure, samp.params_r(), samp.log_prob(), Sample::Diffusion, moveAccepted);
 		}
 
 		void DiffusionSampler::adaptOn()
@@ -240,6 +254,7 @@ namespace simference
 				reverseInitProposalLp = logProposalProbability(newStruct, translateParameters(propParams, dimMatchMap), currentStruct, propParams);
 			}
 			double acceptLp = (propLp + reverseInitProposalLp) - (currLp + forwardInitProposalLp) + annealingLpRatio;
+			bool jumpAccepted = false;
 			if (log(Math::Probability::UniformDistribution<double>::Sample()) < acceptLp)
 			{
 				// Update state variables accordingly
@@ -251,12 +266,13 @@ namespace simference
 					currentParams = translateParameters(propParams, dimMatchMap);
 				currLp = propLp;
 				numJumpMovesAccepted++;
+				jumpAccepted = true;
 			}
 
 			currentUnrolledModel = templateModel->unroll(currentStruct);
 			innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
 
-			return Sample(currentStruct, currentParams, currLp);
+			return Sample(currentStruct, currentParams, currLp, Sample::Jump, jumpAccepted);
 		}
 
 		vector<double> JumpSampler::translateParameters(const vector<double>& params, const DimensionMatchMap& matching) const

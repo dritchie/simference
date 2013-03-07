@@ -11,12 +11,22 @@ namespace simference
 		class Sample
 		{
 		public:
+
+			enum ProposalType
+			{
+				Diffusion = 0,
+				Jump
+			};
+
 			Sample() : logprob(0.0) {}
-			Sample(StructurePtr s, const std::vector<double>& p, double lp)
-				: structure(s), params(p), logprob(lp) {}
+			Sample(StructurePtr s, const std::vector<double>& p, double lp, ProposalType pt, bool acc)
+				: structure(s), params(p), logprob(lp), proposalType(pt), accepted(acc) {}
+			void print(std::ostream& out) const;
 			StructurePtr structure;
 			std::vector<double> params;
 			double logprob;
+			ProposalType proposalType;
+			bool accepted;
 		};
 
 		class Sampler

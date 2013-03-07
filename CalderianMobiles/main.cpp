@@ -25,6 +25,9 @@ shared_ptr<DerivationTree<RealNum>> derivationTree = shared_ptr<DerivationTree<R
 Mobile<RealNum>* mobile = NULL;
 Vector3d anchor(0.0, 9.5, 0.0);
 
+vector<Sample> mostRecentSamples;
+int currSampleIndex = 0;
+
 void reshape(int w, int h)
 {
 	glViewport(0, 0, w, h);
@@ -191,22 +194,60 @@ void keyboard(unsigned char key, int x, int y)
 		ftmp->addTemplate(FactorTemplatePtr(new MobileFactorTemplate(anchor)));
 		GrammarJumpSampler gs(ftmp, derivationTree, p, numLARJannealSteps, jumpFreq);
 
-		vector<Sample> samples;
-		gs.sample(samples, numLARJiters, numLARJwarmup);
+		mostRecentSamples.clear();
+		gs.sample(mostRecentSamples, numLARJiters, numLARJwarmup);
 
 		gs.writeAnalytics(cout);
 
-		// Find the sample with highest log-probability and display that state
-		sort(samples.begin(), samples.end(), [](const Sample& s1, const Sample& s2) { return s1.logprob > s2.logprob; });
+		//// Find the sample with highest log-probability and display that state
+		////sort(mostRecentSamples.begin(), mostRecentSamples.end(), [](const Sample& s1, const Sample& s2) { return s1.logprob > s2.logprob; });
 		//unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-		//shuffle(samples.begin(), samples.end(), default_random_engine(seed));
-		const Sample& bestsamp = samples[0];
-		derivationTree = static_pointer_cast<DerivationTree<RealNum>>(bestsamp.structure);
-		params.clear();
-		for (double d : bestsamp.params) params.push_back(var(d));
+		//shuffle(mostRecentSamples.begin(), mostRecentSamples.end(), default_random_engine(seed));
+		//const Sample& bestsamp = mostRecentSamples[0];
+		//derivationTree = static_pointer_cast<DerivationTree<RealNum>>(bestsamp.structure);
+		//params.clear();
+		//for (double d : bestsamp.params) params.push_back(var(d));
+		//derivationTree->setParams(params);
+		//delete mobile;
+		//mobile = new Mobile<var>(derivationTree->derivation, anchor);
+		//needsRedisplay = true;
+	}
+
+	if (needsRedisplay)
+		glutPostRedisplay();
+}
+
+void special(int key, int x, int y)
+{
+	bool needsRedisplay = false;
+
+	auto displayCurrentSample = [&needsRedisplay] ()
+	{
+		const Sample& samp = mostRecentSamples[currSampleIndex];
+		derivationTree = static_pointer_cast<DerivationTree<var>>(samp.structure);
+		vector<var> params;
+		for (double d : samp.params) params.push_back(d);
 		derivationTree->setParams(params);
-		mobile->updateAnchors();
+		delete mobile;
+		mobile = new Mobile<var>(derivationTree->derivation, anchor);
 		needsRedisplay = true;
+		cout << "(" << currSampleIndex << ") ";
+		samp.print(cout);
+	};
+
+	if (key == GLUT_KEY_LEFT)
+	{
+		if (mostRecentSamples.size() > 0)
+		{
+			currSampleIndex = (currSampleIndex - 1);
+			if (currSampleIndex < 0) currSampleIndex = mostRecentSamples.size() - 1;
+			displayCurrentSample();
+		}
+	}
+	else if (key == GLUT_KEY_RIGHT)
+	{
+		currSampleIndex = (currSampleIndex + 1) % mostRecentSamples.size();
+		displayCurrentSample();
 	}
 
 	if (needsRedisplay)
@@ -224,6 +265,7 @@ int main(int argc, char** argv)
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
 	glutKeyboardFunc(keyboard);
+	glutSpecialFunc(special);
 
 	axiom = new String<RealNum>::type;
 
