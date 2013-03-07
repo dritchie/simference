@@ -58,7 +58,7 @@ void keyboard(unsigned char key, int x, int y)
 		if (mobile) delete mobile;
 		mobile = new Mobile<RealNum>(derivationTree->derivation, anchor);
 
-		cout << "param log prob: " << derivationTree->paramLogProb() << endl;
+		//cout << "param log prob: " << derivationTree->paramLogProb() << endl;
 
 		needsRedisplay = true;
 	}
