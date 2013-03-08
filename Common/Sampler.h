@@ -15,7 +15,8 @@ namespace simference
 			enum ProposalType
 			{
 				Diffusion = 0,
-				Jump
+				Jump,
+				Annealing
 			};
 
 			Sample() : logprob(0.0) {}
@@ -61,6 +62,7 @@ namespace simference
 			void adaptOn();
 			void adaptOff();
 			bool adapting();
+			void writeAnalytics(std::ostream& out) const;
 			static bool paramsEqual(const std::vector<double>& p1, const std::vector<double>& p2);
 		private:
 			DiffusionSamplerImpl* implementation;
@@ -127,8 +129,10 @@ namespace simference
 			unsigned int numDiffusionMovesAccepted;
 			unsigned int numJumpMovesAttempted;
 			unsigned int numJumpMovesAccepted;
+			unsigned int numDiffDimJumpMovesAccepted;
 			unsigned int numAnnealingMovesAttempted;
 			unsigned int numAnnealingMovesAccepted;
+			std::vector<Sample> annealingSamples;
 		};
 	}
 }

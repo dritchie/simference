@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <iostream>
 #include <stack>
+#include <typeinfo>
 
 using namespace simference::Math::Probability;
 
@@ -271,6 +272,27 @@ namespace simference
 				computeDerivation();
 
 				// We don't update provenance here...that only happens in LARJ proposals
+			}
+
+			bool structurallyEquivalentTo(StructurePtr other)
+			{
+				std::shared_ptr<DerivationTree<RealNum>> dt = dynamic_pointer_cast<DerivationTree<RealNum>>(other);
+				if (!dt) return false;
+
+				// Linearize variables. Check that they are all of the same type
+				// and made the same structural choices.
+				typename String<RealNum>::type vars1;
+				typename String<RealNum>::type vars2;
+				this->variables(vars1);
+				dt->variables(vars2);
+				for (unsigned int i = 0; i < vars1.size(); i++)
+				{
+					auto v1 = static_pointer_cast<Variable<RealNum>>(vars1[i]);
+					auto v2 = static_pointer_cast<Variable<RealNum>>(vars2[i]);
+					if (typeid(v1) != typeid(v2) || v1->unrolledProduction != v2->unrolledProduction)
+						return false;
+				}
+				return true;
 			}
 
 			void reroll(Variable<RealNum>& v)

@@ -138,6 +138,8 @@ void keyboard(unsigned char key, int x, int y)
 		DiffusionSampler sampler(StructurePtr(NULL), *model, initParams);
 		sampler.sample(samples, numHmcIters, numWarmup);
 
+		sampler.writeAnalytics(cout);
+
 		// Find the sample with highest log-probability and display that state
 		sort(samples.begin(), samples.end(), [](const Sample& s1, const Sample& s2) { return s1.logprob > s2.logprob; });
 		//unsigned seed = chrono::system_clock::now().time_since_epoch().count();
@@ -181,10 +183,10 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	else if (key == 'l')
 	{
-		static const unsigned int numLARJiters = 1000;
-		static const unsigned int numLARJwarmup = 100;
-		static const unsigned int numLARJannealSteps = 10;
-		static const double jumpFreq = 0.1;
+		static const unsigned int numLARJiters = 10;	// RESET this to 1000
+		static const unsigned int numLARJwarmup = 0;	// RESET this to 100
+		static const unsigned int numLARJannealSteps = 20;
+		static const double jumpFreq = 1.0;				// RESET this to 0.1
 
 		// Test LARJ sampling
 		vector<var> params; derivationTree->getParams(params);
@@ -198,19 +200,6 @@ void keyboard(unsigned char key, int x, int y)
 		gs.sample(mostRecentSamples, numLARJiters, numLARJwarmup);
 
 		gs.writeAnalytics(cout);
-
-		//// Find the sample with highest log-probability and display that state
-		////sort(mostRecentSamples.begin(), mostRecentSamples.end(), [](const Sample& s1, const Sample& s2) { return s1.logprob > s2.logprob; });
-		//unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-		//shuffle(mostRecentSamples.begin(), mostRecentSamples.end(), default_random_engine(seed));
-		//const Sample& bestsamp = mostRecentSamples[0];
-		//derivationTree = static_pointer_cast<DerivationTree<RealNum>>(bestsamp.structure);
-		//params.clear();
-		//for (double d : bestsamp.params) params.push_back(var(d));
-		//derivationTree->setParams(params);
-		//delete mobile;
-		//mobile = new Mobile<var>(derivationTree->derivation, anchor);
-		//needsRedisplay = true;
 	}
 
 	if (needsRedisplay)

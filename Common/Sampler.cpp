@@ -15,7 +15,9 @@ namespace simference
 				propStr = "Jump";
 			if (proposalType == Diffusion)
 				propStr = "Diffusion";
-			out << "[Sample] ProposalType: " << propStr << " | Accepted: " << accepted << endl;
+			if (proposalType == Annealing)
+				propStr = "Annealing";
+			out << "[Sample] Proposal: " << propStr << " | Accepted: " << accepted << " | LogProb: " << logprob << endl;
 		}
 
 		void Sampler::sample(std::vector<Sample>& samples,
@@ -78,7 +80,7 @@ namespace simference
 			{}
 			// This constructor assumes that epsilon adaptation is done
 			DiffusionSamplerImpl(Model& m, const vector<double>& initParams, const DiffusionSamplerImpl& prev)
-				: nuts(m, 10, prev._epsilon, 0.0, false, 0.6, 0.05, prev._rand_int, &initParams)
+				: nuts(m, 10, /*prev._epsilon*/0.00074017, 0.0, false, 0.6, 0.05, prev._rand_int, &initParams)
 			{}
 			friend class DiffusionSampler;
 		};
@@ -105,6 +107,9 @@ namespace simference
 			delete oldimpl;
 			prevParams = initParams;
 			numMovesAttempted = numMovesAccepted = 0;
+
+			//// Spit out the current epsilon
+			//cout << "epsilon: " << implementation->_epsilon << endl;
 		}
 
 		bool DiffusionSampler::paramsEqual(const std::vector<double>& p1, const std::vector<double>& p2)
@@ -146,6 +151,18 @@ namespace simference
 			return implementation->adapting();
 		}
 
+		void DiffusionSampler::writeAnalytics(std::ostream& out) const
+		{
+			out << "-----------------------------------------------" << endl;
+			out << "         DiffusionSampler Analytics            " << endl;
+			out << "-----------------------------------------------" << endl;
+			out << "	Attempted Moves: " << numMovesAttempted << endl;
+			out << "	Accepted Moves:  " << numMovesAccepted << endl;
+			out << "	Percentage:      " << ((double)numMovesAccepted)/numMovesAttempted << endl;
+			out << "-----------------------------------------------" << endl;
+			out << endl;
+		}
+
 		JumpSampler::JumpSampler(FactorTemplateModelPtr m, StructurePtr initStruct,
 			const vector<double>& initParams,
 			unsigned int nAnnealingSteps,
@@ -154,7 +171,7 @@ namespace simference
 		templateModel(m), currentStruct(initStruct), numAnnealingSteps(nAnnealingSteps),
 			jumpFrequency(jumpFreq), currentParams(initParams),
 			numDiffusionMovesAttempted(0), numDiffusionMovesAccepted(0),
-			numJumpMovesAttempted(0), numJumpMovesAccepted(0),
+			numJumpMovesAttempted(0), numJumpMovesAccepted(0), numDiffDimJumpMovesAccepted(0),
 			numAnnealingMovesAttempted(0), numAnnealingMovesAccepted(0)
 		{
 			currentUnrolledModel = templateModel->unroll(initStruct);
@@ -217,6 +234,29 @@ namespace simference
 			currentUnrolledModel = ModelPtr(mixModel);
 			innerSampler->reinitialize(newStruct, *currentUnrolledModel, matchedParams);
 
+			//// TEST: What if we just straight-up used the new model?
+			////currentUnrolledModel = newModel;	// This leads to tons of weird behavior...
+			//currentUnrolledModel = templateModel->unroll(newStruct);
+			//vector<double> newp;
+			//if (dimMatchMap.direction == DimensionMatchMap::OldToNew)
+			//	newp = matchedParams;
+			//else newp = translateParameters(matchedParams, dimMatchMap);
+			//innerSampler->reinitialize(newStruct, *currentUnrolledModel, newp);
+			//vector<int> dummy;
+			//vector<double> gradient;
+			//double test = currentUnrolledModel->grad_log_prob(matchedParams, dummy, gradient);
+
+			// TEST: Compare the lp / gradient of 'currModel' with
+			// the actual current model
+			auto actualCurrModel = templateModel->unroll(currentStruct);
+			vector<int> dummy;
+			vector<double> grad1, grad2;
+			double lp1 = actualCurrModel->grad_log_prob(currentParams, dummy, grad1);
+			double lp2 = currModel->grad_log_prob(matchedParams, dummy, grad2);
+			double lpdiff = lp1 - lp2;
+			vector<double> gradiff(grad1.size());
+			for (unsigned int i = 0; i < grad1.size(); i++) gradiff[i] = grad1[i] - grad2[i];
+
 			// Run the inner HMC kernel for numAnnealingSteps
 			// Adjust the temperature of the factors each step
 			// Accumulate log probability of each intermediate state
@@ -224,6 +264,7 @@ namespace simference
 			double annealingLpRatio = 0.0;
 			double prevAnnealingLp = std::numeric_limits<double>::quiet_NaN();
 			Sample lastAnnealingState;
+			annealingSamples.clear();
 			for (unsigned int i = 0; i < numAnnealingSteps; i++)
 			{
 				double temp = ((double)i)/(numAnnealingSteps-1);
@@ -231,6 +272,8 @@ namespace simference
 				weights[1] = temp;
 				weights[2] = 1.0;
 				lastAnnealingState = innerSampler->nextSample();
+				lastAnnealingState.proposalType = Sample::Annealing;
+				annealingSamples.push_back(lastAnnealingState);
 				double currAnnealingLp = lastAnnealingState.logprob;
 				if (prevAnnealingLp == prevAnnealingLp)
 					annealingLpRatio += (prevAnnealingLp - currAnnealingLp);
@@ -259,6 +302,10 @@ namespace simference
 			{
 				// Update state variables accordingly
 				// (currentStruct, currentParams, currentUnrolledModel, innerSampler->_)
+
+				if (!currentStruct->structurallyEquivalentTo(newStruct))
+					numDiffDimJumpMovesAccepted++;
+
 				currentStruct = newStruct;
 				if (dimMatchMap.direction == DimensionMatchMap::OldToNew)
 					currentParams = propParams;
@@ -290,8 +337,6 @@ namespace simference
 								int num_thin,
 								bool save_warmup)
 		{
-			// Almost identical to superclass method, except we don't start dimension jumping
-			// until after warm-up.
 			if (epsilon_adapt)
 			{
 				adaptOn();
@@ -302,6 +347,7 @@ namespace simference
 
 				if (m < num_warmup)
 				{
+					// Don't start dimension jumping until after warm-up.
 					Sample sample = innerSampler->nextSample();
 					if (save_warmup && (m % num_thin) == 0)
 					{
@@ -314,13 +360,21 @@ namespace simference
 					{
 						adaptOff();
 					}
+
+					unsigned int numJumps = numJumpMovesAttempted;
 					Sample sample = nextSample();
+
 					if (((m - num_warmup) % num_thin) != 0)
 					{
 						continue;
 					}
 					else 
 					{
+						// If we just jumped, then we should splice in the annealing samples, too.
+						if (numJumpMovesAttempted > numJumps)
+						{
+							samples.insert(samples.end(), annealingSamples.begin(), annealingSamples.end());
+						}
 						samples.push_back(sample);
 					}
 				}
@@ -347,6 +401,8 @@ namespace simference
 			out << "	Attempted Moves: " << numJumpMovesAttempted << endl;
 			out << "	Accepted Moves:  " << numJumpMovesAccepted << endl;
 			out << "	Percentage:      " << ((double)numJumpMovesAccepted)/numJumpMovesAttempted << endl;
+			out << "	Accepted Diff Struct Moves:  " << numDiffDimJumpMovesAccepted << endl;
+			out << "	Percentage:      " << ((double)numDiffDimJumpMovesAccepted)/numJumpMovesAttempted << endl;
 			out << "-----------------------------------------------" << endl;
 			out << endl;
 		}

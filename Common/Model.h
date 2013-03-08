@@ -10,6 +10,7 @@ namespace simference
 	{
 	public:
 		virtual unsigned int numParams() const = 0;
+		virtual bool structurallyEquivalentTo(std::shared_ptr<Structure> other) = 0;
 	};
 
 	typedef std::shared_ptr<Structure> StructurePtr;

@@ -70,16 +70,23 @@ namespace simference
 		typename Collection::value_type softMax(const Collection& nums, typename Collection::value_type alpha)
 		{
 			typedef typename Collection::value_type T;
+
+			// First, normalize the data
+			T maxelem = *(std::max_element(nums.begin(), nums.end()));
+			T minelem = *(std::min_element(nums.begin(), nums.end()));
+			T range = maxelem - minelem;
+
 			T numer = 0.0;
 			T denom = 0.0;
 			for (T num : nums)
 			{
-				T ean = exp(alpha*num);
-				numer += num * ean;
+				T normnum = (num - minelem) / range;
+				T ean = exp(alpha*normnum);
+				numer += normnum * ean;
 				denom += ean;
 			}
 			if (denom > 0.0)
-				return numer / denom;
+				return minelem + range*(numer / denom);
 			else return 0.0;
 		}
 	}
