@@ -11,8 +11,10 @@ namespace simference
 		void Sample::print(std::ostream& out) const
 		{
 			string propStr;
-			if (proposalType == Jump)
-				propStr = "Jump";
+			if (proposalType == JumpBegin)
+				propStr = "JumpBegin";
+			if (proposalType == JumpEnd)
+				propStr = "JumpEnd";
 			if (proposalType == Diffusion)
 				propStr = "Diffusion";
 			if (proposalType == Annealing)
@@ -107,9 +109,6 @@ namespace simference
 			delete oldimpl;
 			prevParams = initParams;
 			numMovesAttempted = numMovesAccepted = 0;
-
-			//// Spit out the current epsilon
-			//cout << "epsilon: " << implementation->_epsilon << endl;
 		}
 
 		bool DiffusionSampler::paramsEqual(const std::vector<double>& p1, const std::vector<double>& p2)
@@ -218,10 +217,9 @@ namespace simference
 			double currLp = currentUnrolledModel->log_prob(currentParams);
 
 			// Propose new structure and do dimension matching
-			StructurePtr newStruct = jumpProposal();
-			std::vector<double> matchedParams;
 			DimensionMatchMap dimMatchMap;
-			dimensionMatch(currentStruct, currentParams, newStruct, matchedParams, dimMatchMap);
+			std::vector<double> extendedParams;
+			StructurePtr newStruct = jumpProposal(extendedParams, dimMatchMap);
 
 			// Unroll factors for the current structure and new structure
 			ModelPtr currModel, newModel, sharedModel;
@@ -232,30 +230,7 @@ namespace simference
 			models.push_back(sharedModel);	// 2
 			MixtureModel* mixModel = new MixtureModel(models);
 			currentUnrolledModel = ModelPtr(mixModel);
-			innerSampler->reinitialize(newStruct, *currentUnrolledModel, matchedParams);
-
-			//// TEST: What if we just straight-up used the new model?
-			////currentUnrolledModel = newModel;	// This leads to tons of weird behavior...
-			//currentUnrolledModel = templateModel->unroll(newStruct);
-			//vector<double> newp;
-			//if (dimMatchMap.direction == DimensionMatchMap::OldToNew)
-			//	newp = matchedParams;
-			//else newp = translateParameters(matchedParams, dimMatchMap);
-			//innerSampler->reinitialize(newStruct, *currentUnrolledModel, newp);
-			//vector<int> dummy;
-			//vector<double> gradient;
-			//double test = currentUnrolledModel->grad_log_prob(matchedParams, dummy, gradient);
-
-			// TEST: Compare the lp / gradient of 'currModel' with
-			// the actual current model
-			auto actualCurrModel = templateModel->unroll(currentStruct);
-			vector<int> dummy;
-			vector<double> grad1, grad2;
-			double lp1 = actualCurrModel->grad_log_prob(currentParams, dummy, grad1);
-			double lp2 = currModel->grad_log_prob(matchedParams, dummy, grad2);
-			double lpdiff = lp1 - lp2;
-			vector<double> gradiff(grad1.size());
-			for (unsigned int i = 0; i < grad1.size(); i++) gradiff[i] = grad1[i] - grad2[i];
+			innerSampler->reinitialize(newStruct, *currentUnrolledModel, extendedParams);
 
 			// Run the inner HMC kernel for numAnnealingSteps
 			// Adjust the temperature of the factors each step
@@ -265,15 +240,19 @@ namespace simference
 			double prevAnnealingLp = std::numeric_limits<double>::quiet_NaN();
 			Sample lastAnnealingState;
 			annealingSamples.clear();
+			annealingSamples.push_back(Sample(newStruct, dimMatchMap.translateExtendedToNew(extendedParams), currentUnrolledModel->log_prob(extendedParams), Sample::JumpBegin, true));
 			for (unsigned int i = 0; i < numAnnealingSteps; i++)
 			{
 				double temp = ((double)i)/(numAnnealingSteps-1);
 				weights[0] = 1.0 - temp;
 				weights[1] = temp;
 				weights[2] = 1.0;
+
 				lastAnnealingState = innerSampler->nextSample();
 				lastAnnealingState.proposalType = Sample::Annealing;
 				annealingSamples.push_back(lastAnnealingState);
+				annealingSamples.back().params = dimMatchMap.translateExtendedToNew(annealingSamples.back().params);
+
 				double currAnnealingLp = lastAnnealingState.logprob;
 				if (prevAnnealingLp == prevAnnealingLp)
 					annealingLpRatio += (prevAnnealingLp - currAnnealingLp);
@@ -286,31 +265,17 @@ namespace simference
 			const vector<double>& propParams = lastAnnealingState.params;
 			double propLp = prevAnnealingLp;
 			double forwardInitProposalLp, reverseInitProposalLp;
-			if (dimMatchMap.direction == DimensionMatchMap::OldToNew)
-			{
-				forwardInitProposalLp = logProposalProbability(currentStruct, currentParams, newStruct, matchedParams);
-				reverseInitProposalLp = logProposalProbability(newStruct, propParams, currentStruct, translateParameters(propParams, dimMatchMap));
-			}
-			else
-			{
-				forwardInitProposalLp = logProposalProbability(currentStruct, currentParams, newStruct, translateParameters(matchedParams, dimMatchMap));
-				reverseInitProposalLp = logProposalProbability(newStruct, translateParameters(propParams, dimMatchMap), currentStruct, propParams);
-			}
+			forwardInitProposalLp = logProposalProbability(currentStruct, currentParams, newStruct, dimMatchMap.translateExtendedToNew(extendedParams));
+			reverseInitProposalLp = logProposalProbability(newStruct, dimMatchMap.translateExtendedToNew(propParams), currentStruct, dimMatchMap.translateExtendedToOld(propParams));
 			double acceptLp = (propLp + reverseInitProposalLp) - (currLp + forwardInitProposalLp) + annealingLpRatio;
 			bool jumpAccepted = false;
 			if (log(Math::Probability::UniformDistribution<double>::Sample()) < acceptLp)
 			{
 				// Update state variables accordingly
-				// (currentStruct, currentParams, currentUnrolledModel, innerSampler->_)
-
 				if (!currentStruct->structurallyEquivalentTo(newStruct))
 					numDiffDimJumpMovesAccepted++;
-
 				currentStruct = newStruct;
-				if (dimMatchMap.direction == DimensionMatchMap::OldToNew)
-					currentParams = propParams;
-				else
-					currentParams = translateParameters(propParams, dimMatchMap);
+				currentParams = dimMatchMap.translateExtendedToNew(propParams);
 				currLp = propLp;
 				numJumpMovesAccepted++;
 				jumpAccepted = true;
@@ -319,15 +284,7 @@ namespace simference
 			currentUnrolledModel = templateModel->unroll(currentStruct);
 			innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
 
-			return Sample(currentStruct, currentParams, currLp, Sample::Jump, jumpAccepted);
-		}
-
-		vector<double> JumpSampler::translateParameters(const vector<double>& params, const DimensionMatchMap& matching) const
-		{
-			vector<double> transp;
-			for (unsigned int index : matching.paramIndexMap)
-				transp.push_back(params[index]);
-			return transp;
+			return Sample(currentStruct, currentParams, currLp, Sample::JumpEnd, jumpAccepted);
 		}
 
 		void JumpSampler::sample(vector<Sample>& samples,

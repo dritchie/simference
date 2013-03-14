@@ -18,13 +18,18 @@ namespace simference
 	class DimensionMatchMap
 	{
 	public:
-		std::vector<unsigned int> paramIndexMap;
-		enum Direction
-		{
-			OldToNew = 0,
-			NewToOld
-		};
-		Direction direction;
+		DimensionMatchMap() {}
+		DimensionMatchMap(unsigned int esd, const std::vector<unsigned int>& opi, const std::vector<unsigned int>& npi)
+			: extendedSpaceDimension(esd), oldParamIndices(opi), newParamIndices(npi) {}
+		unsigned int extendedSpaceDimension;
+		std::vector<unsigned int> oldParamIndices;
+		std::vector<unsigned int> newParamIndices;
+		
+		std::vector<double> translateExtendedToOld(const std::vector<double>& extendedParams);
+		std::vector<double> translateExtendedToNew(const std::vector<double>& extendedParams);
+
+	private:
+		static std::vector<double> translate(const std::vector<double>& extendedParams, const std::vector<unsigned int>& indexMap);
 	};
 
 	template <typename RealNum>

@@ -6,6 +6,24 @@ using namespace std;
 
 namespace simference
 {
+	vector<double> DimensionMatchMap::translateExtendedToOld(const vector<double>& extendedParams)
+	{
+		return translate(extendedParams, oldParamIndices);
+	}
+
+	vector<double> DimensionMatchMap::translateExtendedToNew(const vector<double>& extendedParams)
+	{
+		return translate(extendedParams, newParamIndices);
+	}
+
+	vector<double> DimensionMatchMap::translate(const vector<double>& extendedParams, const vector<unsigned int>& indexMap)
+	{
+		vector<double> result(indexMap.size());
+		for (unsigned int i = 0; i < indexMap.size(); i++)
+			result[i] = extendedParams[indexMap[i]];
+		return result;
+	}
+
 	namespace Models
 	{
 
@@ -73,24 +91,15 @@ namespace simference
 		void FactorTemplateModel::unroll(StructurePtr sOld, StructurePtr sNew, const DimensionMatchMap& dimMatch,
 			ModelPtr& mOld, ModelPtr& mNew, ModelPtr& mShared) const
 		{
-			unsigned int numParams = max(sOld->numParams(), sNew->numParams());
+			unsigned int numParams = dimMatch.extendedSpaceDimension;
 
 			vector<FactorPtr> fOld, fNew, fShared;
 			for (auto t : templates)
 				t->unroll(sOld, sNew, fOld, fNew, fShared);
 
-			if (dimMatch.direction == DimensionMatchMap::OldToNew)
-			{
-				mOld = ModelPtr(new DimensionMatchedFactorModel(sOld, numParams, dimMatch.paramIndexMap, fOld));
-				mNew = ModelPtr(new FactorModel(sNew, numParams, fNew));
-				mShared = ModelPtr(new DimensionMatchedFactorModel(sOld, numParams, dimMatch.paramIndexMap, fShared));
-			}
-			else
-			{
-				mOld = ModelPtr(new FactorModel(sOld, numParams, fOld));
-				mNew = ModelPtr(new DimensionMatchedFactorModel(sNew, numParams, dimMatch.paramIndexMap, fNew));
-				mShared = ModelPtr(new FactorModel(sOld, numParams, fShared));
-			}
+			mOld = ModelPtr(new DimensionMatchedFactorModel(sOld, numParams, dimMatch.oldParamIndices, fOld));
+			mNew = ModelPtr(new DimensionMatchedFactorModel(sNew, numParams, dimMatch.newParamIndices, fNew));
+			mShared = ModelPtr(new DimensionMatchedFactorModel(sOld, numParams, dimMatch.oldParamIndices, fShared));
 		}
 
 		MixtureModel::MixtureModel(const vector<ModelPtr>& ms, const vector<double>& ws)

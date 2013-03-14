@@ -168,12 +168,9 @@ void keyboard(unsigned char key, int x, int y)
 		derivationTree->setParams(params);
 
 		// Make proposal
-		StructurePtr newstruct = gs.jumpProposalTest();
-
-		// Check that dimension matching works
 		DimensionMatchMap matching;
 		vector<double> p2;
-		gs.dimensionMatchTest(derivationTree, p, newstruct, p2, matching);
+		StructurePtr newstruct = gs.jumpProposalTest(p2, matching);
 
 		// Visualize the result
 		derivationTree = static_pointer_cast<DerivationTree<RealNum>>(newstruct);

@@ -43,15 +43,11 @@ namespace simference
 			lastStructJumpedFrom(NULL), lastStructJumpedTo(NULL) {}
 
 			// FOR TESTING
-			StructurePtr jumpProposalTest() { return jumpProposal(); }
-			void dimensionMatchTest(StructurePtr sFrom, const std::vector<double>& pFrom,
-				StructurePtr sTo, std::vector<double>& pTo, DimensionMatchMap& matching)
-			{ dimensionMatch(sFrom, pFrom, sTo, pTo, matching); }
+			StructurePtr jumpProposalTest(std::vector<double>& extendedParams, DimensionMatchMap& dimMatchMap)
+			{ return jumpProposal(extendedParams, dimMatchMap); }
 
 		protected:
-			StructurePtr jumpProposal();
-			void dimensionMatch(StructurePtr sFrom, const std::vector<double>& pFrom,
-				StructurePtr sTo, std::vector<double>& pTo, DimensionMatchMap& matching);
+			StructurePtr jumpProposal(std::vector<double>& extendedParams, DimensionMatchMap& dimMatchMap);
 			double logProposalProbability(StructurePtr sFrom, const std::vector<double>& pFrom,
 				StructurePtr sTo, const std::vector<double>& pTo);
 

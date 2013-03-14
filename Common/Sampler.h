@@ -15,7 +15,8 @@ namespace simference
 			enum ProposalType
 			{
 				Diffusion = 0,
-				Jump,
+				JumpBegin,
+				JumpEnd,
 				Annealing
 			};
 
@@ -104,17 +105,12 @@ namespace simference
 
 		protected:
 
-			virtual StructurePtr jumpProposal() = 0;
-
-			virtual void dimensionMatch(StructurePtr sFrom, const std::vector<double>& pFrom,
-				StructurePtr sTo, std::vector<double>& pTo, DimensionMatchMap& matching) = 0;
+			virtual StructurePtr jumpProposal(std::vector<double>& extendedParams, DimensionMatchMap& dimMatchMap) = 0;
 
 			virtual double logProposalProbability(StructurePtr sFrom, const std::vector<double>& pFrom,
 				StructurePtr sTo, const std::vector<double>& pTo) = 0;
 
 			Sample executeJumpMove();
-
-			std::vector<double> translateParameters(const std::vector<double>& params, const DimensionMatchMap& matching) const;
 
 			DiffusionSamplerPtr innerSampler;
 			Models::FactorTemplateModelPtr templateModel;

@@ -19,18 +19,21 @@ namespace simference
 		void GrammarFactorTemplate::unroll(StructurePtr sOld, StructurePtr sNew,
 			std::vector<FactorPtr>& fOld, std::vector<FactorPtr>& fNew, std::vector<FactorPtr>& fShared) const
 		{
-			auto dtOld = static_pointer_cast<DerivationTree<var>>(sOld);
-			auto dtNew = static_pointer_cast<DerivationTree<var>>(sNew);
-			assert(dtNew->provenance.modifiedFrom == dtOld);
+			//auto dtOld = static_pointer_cast<DerivationTree<var>>(sOld);
+			//auto dtNew = static_pointer_cast<DerivationTree<var>>(sNew);
+			//assert(dtNew->provenance.modifiedFrom == dtOld);
 
-			String<var>::type root;
-			unordered_set<SymbolPtr<var>::type> exclude;
-			root.push_back(dtNew->provenance.oldSubtreeRoot);
-			fOld.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sOld, root, exclude)));
-			root.clear(); root.push_back(dtNew->provenance.newSubtreeRoot);
-			fNew.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sNew, root, exclude)));
-			exclude.insert(dtNew->provenance.oldSubtreeRoot);
-			fShared.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sOld, dtOld->roots, exclude)));
+			//String<var>::type root;
+			//unordered_set<SymbolPtr<var>::type> exclude;
+			//root.push_back(dtNew->provenance.oldSubtreeRoot);
+			//fOld.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sOld, root, exclude)));
+			//root.clear(); root.push_back(dtNew->provenance.newSubtreeRoot);
+			//fNew.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sNew, root, exclude)));
+			//exclude.insert(dtNew->provenance.oldSubtreeRoot);
+			//fShared.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sOld, dtOld->roots, exclude)));
+
+			// TEST
+			FactorTemplate::unroll(sOld, sNew, fOld, fNew, fShared);
 		}
 
 		GrammarFactorTemplate::Factor::Factor(StructurePtr dtree,
@@ -75,7 +78,7 @@ namespace simference
 
 	namespace Samplers
 	{
-		StructurePtr GrammarJumpSampler::jumpProposal()
+		StructurePtr GrammarJumpSampler::jumpProposal(std::vector<double>& extendedParams, DimensionMatchMap& dimMatchMap)
 		{
 			// Pick a random nonterminal and reroll it.
 			// (Don't forget to store the correct information in the 'provenance' field)
@@ -98,8 +101,12 @@ namespace simference
 					probs[i] /= z;	// normalize
 			};
 
-			// Deep copy
+			// Set the current structure parameters
 			auto currdt = static_pointer_cast<DerivationTree<var>>(currentStruct);
+			vector<var> currP; for (auto p : currentParams) currP.push_back(p);
+			currdt->setParams(currP);
+
+			// Deep copy
 			auto newdt = shared_ptr<DerivationTree<var>>(new DerivationTree<var>(*currdt));
 			
 			// Decide which variable to reroll
@@ -127,23 +134,11 @@ namespace simference
 			newdt->variables(newvars);
 			variableUnrollProbs(newvars, probabilities);
 			lastJumpReverseLp = log(MultinomialDistribution<double>::Prob(whichVar, probabilities)) + currvars[whichVar]->recursiveStructureLogProb().val();
-			
-			return lastStructJumpedTo;
-		}
 
-		void GrammarJumpSampler::dimensionMatch(StructurePtr sFrom, const std::vector<double>& pFrom,
-			StructurePtr sTo, std::vector<double>& pTo, DimensionMatchMap& matching)
-		{
-			// Verify via provenance that sTo came from sFrom
-			// Check which structure is bigger (if the same size, arbitrarily go with the direction old -> new)
+
 			// Traverse sOld, linearizing the parameters, but skip the replaced node. Remember the index in the list where the skip happened.
 			// Linearize the old and new subtrees; slap the old params on top of the new ones.
 			// Build the map (should be pretty simple)
-
-			// Unboxing and checks
-			auto dtFrom = static_pointer_cast<DerivationTree<var>>(sFrom);
-			auto dtTo = static_pointer_cast<DerivationTree<var>>(sTo);
-			assert(dtTo->provenance.modifiedFrom == dtFrom);
 
 			auto linearizeParams = [](const String<var>::type& roots, SymbolPtr<var>::type skip, vector<var>& outParams, unsigned int& skipPoint)
 			{
@@ -168,66 +163,57 @@ namespace simference
 					}
 				}
 			};
-
-			// Set the current structure parameters
-			vector<var> currP; for (auto p : currentParams) currP.push_back(p);
-			dtFrom->setParams(currP);
 			
 			// Linearize parameters, but skip the old subtree
 			vector<var> params;
 			unsigned int skipPoint;
-			auto skipVar = dtTo->provenance.oldSubtreeRoot;
-			linearizeParams(dtFrom->roots, skipVar, params, skipPoint);
+			auto skipVar = newdt->provenance.oldSubtreeRoot;
+			linearizeParams(currdt->roots, skipVar, params, skipPoint);
 
-			// Linearize both the old and new subtrees
+			// Linearize the old and new subtrees
 			vector<var> oldTreeParams, newTreeParams;
 			unsigned int dummySkipPoint;
 			String<var>::type roots;
-			roots.push_back(dtTo->provenance.oldSubtreeRoot);
+			roots.push_back(newdt->provenance.oldSubtreeRoot);
 			linearizeParams(roots, SymbolPtr<var>::type(NULL), oldTreeParams, dummySkipPoint);
-			roots.clear(); roots.push_back(dtTo->provenance.newSubtreeRoot);
+			roots.clear(); roots.push_back(newdt->provenance.newSubtreeRoot);
 			linearizeParams(roots, SymbolPtr<var>::type(NULL), newTreeParams, dummySkipPoint);
 
 			// Unify the old+new subtree params
 			vector<var> unifiedSubtreeParams;
-			if (sFrom->numParams() <= sTo->numParams())
-			{
-				// We have more new params than old, so concatenate old with the extra new ones.
-				unifiedSubtreeParams.insert(unifiedSubtreeParams.end(), oldTreeParams.begin(), oldTreeParams.end());
-				unifiedSubtreeParams.insert(unifiedSubtreeParams.end(), newTreeParams.begin() + oldTreeParams.size(), newTreeParams.end());
-			}
-			else
-			{
-				// We have more old params than new, so the new param list is literally just the old one
-				unifiedSubtreeParams = oldTreeParams;
-			}
+			unifiedSubtreeParams.insert(unifiedSubtreeParams.end(), oldTreeParams.begin(), oldTreeParams.end());
+			unifiedSubtreeParams.insert(unifiedSubtreeParams.end(), newTreeParams.begin(), newTreeParams.end());
 
-			// Insert the unified subtree param list into the overall param list
+			// Insert the unified subtree param list into the overall extended param list
 			// (Meanwhile, convert to doubles)
 			for (unsigned int i = 0; i < skipPoint; i++)
-				pTo.push_back(params[i].val());
+				extendedParams.push_back(params[i].val());
 			for (auto p : unifiedSubtreeParams)
-				pTo.push_back(p.val());
+				extendedParams.push_back(p.val());
 			for (unsigned int i = skipPoint; i < params.size(); i++)
-				pTo.push_back(params[i].val());
+				extendedParams.push_back(params[i].val());
 
-			// Build the parameter index map
-			if (sFrom->numParams() <= sTo->numParams())
+			// Build the parameter index maps
+			vector<unsigned int> oldMap, newMap;
+			for (unsigned int i = 0; i < skipPoint; i++)
 			{
-				matching.direction = DimensionMatchMap::OldToNew;
-				for (unsigned int i = 0; i < skipPoint + oldTreeParams.size(); i++)
-					matching.paramIndexMap.push_back(i);
-				for (unsigned int i = skipPoint + unifiedSubtreeParams.size(); i < pTo.size(); i++)
-					matching.paramIndexMap.push_back(i);
+				oldMap.push_back(i);
+				newMap.push_back(i);
 			}
-			else
+			for (unsigned int i = skipPoint; i < skipPoint + oldTreeParams.size(); i++)
+				oldMap.push_back(i);
+			for (unsigned int i = skipPoint + oldTreeParams.size(); i < skipPoint + unifiedSubtreeParams.size(); i++)
+				newMap.push_back(i);
+			for (unsigned int i = skipPoint + unifiedSubtreeParams.size(); i < extendedParams.size(); i++)
 			{
-				matching.direction = DimensionMatchMap::NewToOld;
-				for (unsigned int i = 0; i < skipPoint + newTreeParams.size(); i++)
-					matching.paramIndexMap.push_back(i);
-				for (unsigned int i = skipPoint + unifiedSubtreeParams.size(); i < pTo.size(); i++)
-					matching.paramIndexMap.push_back(i);
+				oldMap.push_back(i);
+				newMap.push_back(i);
 			}
+			dimMatchMap = DimensionMatchMap(extendedParams.size(), oldMap, newMap);
+
+			
+			// Finally we can return!
+			return lastStructJumpedTo;
 		}
 
 		double GrammarJumpSampler::logProposalProbability(StructurePtr sFrom, const std::vector<double>& pFrom,
