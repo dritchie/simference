@@ -19,23 +19,21 @@ namespace simference
 		void GrammarFactorTemplate::unroll(StructurePtr sOld, StructurePtr sNew,
 			std::vector<FactorPtr>& fOld, std::vector<FactorPtr>& fNew, std::vector<FactorPtr>& fShared) const
 		{
-			//auto dtOld = static_pointer_cast<DerivationTree<var>>(sOld);
-			//auto dtNew = static_pointer_cast<DerivationTree<var>>(sNew);
-			//assert(dtNew->provenance.modifiedFrom == dtOld);
+			auto dtOld = static_pointer_cast<DerivationTree<var>>(sOld);
+			auto dtNew = static_pointer_cast<DerivationTree<var>>(sNew);
+			assert(dtNew->provenance.modifiedFrom == dtOld);
 
-			//String<var>::type root;
-			//unordered_set<SymbolPtr<var>::type> exclude;
-			//root.push_back(dtNew->provenance.oldSubtreeRoot);
-			//fOld.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sOld, root, exclude)));
-			//root.clear(); root.push_back(dtNew->provenance.newSubtreeRoot);
-			//fNew.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sNew, root, exclude)));
-			////exclude.insert(dtNew->provenance.oldSubtreeRoot);
-			////fShared.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sOld, dtOld->roots, exclude)));
-			//exclude.insert(dtNew->provenance.newSubtreeRoot);
-			//fShared.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sNew, dtNew->roots, exclude)));
+			String<var>::type root;
+			unordered_set<SymbolPtr<var>::type> exclude;
+			root.push_back(dtNew->provenance.oldSubtreeRoot);
+			fOld.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sOld, root, exclude)));
+			root.clear(); root.push_back(dtNew->provenance.newSubtreeRoot);
+			fNew.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sNew, root, exclude)));
+			exclude.insert(dtNew->provenance.oldSubtreeRoot);
+			fShared.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sOld, dtOld->roots, exclude)));
 
-			// TEST
-			FactorTemplate::unroll(sOld, sNew, fOld, fNew, fShared);
+			//// TEST
+			//FactorTemplate::unroll(sOld, sNew, fOld, fNew, fShared);
 		}
 
 		GrammarFactorTemplate::Factor::Factor(StructurePtr dtree,

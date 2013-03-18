@@ -233,8 +233,6 @@ namespace simference
 			weights[0] = 1.0;
 			weights[1] = 0.0;
 			weights[2] = 1.0;
-			//weights[0] = 1.0;
-			//weights[1] = 1.0;
 			currentUnrolledModel = ModelPtr(mixModel);
 			innerSampler->reinitialize(newStruct, *currentUnrolledModel, extendedParams);
 
@@ -252,8 +250,6 @@ namespace simference
 				weights[0] = 1.0 - temp;
 				weights[1] = temp;
 				weights[2] = 1.0;
-				//weights[0] = 1.0;
-				//weights[1] = 1.0;
 
 				lastAnnealingState = innerSampler->nextSample();
 				lastAnnealingState.proposalType = Sample::Annealing;
