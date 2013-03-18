@@ -180,7 +180,7 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	else if (key == 'l')
 	{
-		static const unsigned int numLARJiters = 10;	// RESET this to 1000
+		static const unsigned int numLARJiters = 5;	// RESET this to 1000
 		static const unsigned int numLARJwarmup = 0;	// RESET this to 100
 		static const unsigned int numLARJannealSteps = 20;
 		static const double jumpFreq = 1.0;				// RESET this to 0.1
@@ -190,7 +190,7 @@ void keyboard(unsigned char key, int x, int y)
 		vector<double> p; for (auto var : params) p.push_back(var.val());
 		FactorTemplateModelPtr ftmp = FactorTemplateModelPtr(new FactorTemplateModel);
 		ftmp->addTemplate(FactorTemplatePtr(new GrammarFactorTemplate));
-		ftmp->addTemplate(FactorTemplatePtr(new MobileFactorTemplate(anchor)));
+		//ftmp->addTemplate(FactorTemplatePtr(new MobileFactorTemplate(anchor)));
 		GrammarJumpSampler gs(ftmp, derivationTree, p, numLARJannealSteps, jumpFreq);
 
 		mostRecentSamples.clear();

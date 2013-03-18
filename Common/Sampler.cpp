@@ -225,33 +225,79 @@ namespace simference
 			ModelPtr currModel, newModel, sharedModel;
 			templateModel->unroll(currentStruct, newStruct, dimMatchMap, currModel, newModel, sharedModel);
 			vector<ModelPtr> models;
-			models.push_back(currModel);	// 0
+			//models.push_back(currModel);	// 0
 			models.push_back(newModel);		// 1
 			models.push_back(sharedModel);	// 2
 			MixtureModel* mixModel = new MixtureModel(models);
+			vector<double>& weights = mixModel->getWeights();
+			//weights[0] = 1.0;
+			//weights[1] = 0.0;
+			//weights[2] = 1.0;
+			weights[0] = 1.0;
+			weights[1] = 1.0;
 			currentUnrolledModel = ModelPtr(mixModel);
-			innerSampler->reinitialize(newStruct, *currentUnrolledModel, extendedParams);
+			//innerSampler->reinitialize(newStruct, *currentUnrolledModel, extendedParams);
+			innerSampler->reinitialize(newStruct, *currentUnrolledModel, dimMatchMap.translateExtendedToNew(extendedParams));
+
+			//// TEST (if lp is the same using split unrolling vs. normal unrolling)
+			//{
+			//	weights[0] = 1.0; weights[1] = 0.0, weights[2] = 1.0;
+			//	double mix_0_Lp = currentUnrolledModel->log_prob(extendedParams);
+			//	weights[0] = 0.0; weights[1] = 1.0, weights[2] = 1.0;
+			//	double mix_1_Lp = currentUnrolledModel->log_prob(extendedParams);
+			//	auto currm = templateModel->unroll(currentStruct);
+			//	double currLp = currm->log_prob(currentParams);
+			//	auto newm = templateModel->unroll(newStruct);
+			//	double newLp = newm->log_prob(dimMatchMap.translateExtendedToNew(extendedParams));
+			//	cout << "[Curr lp] True: " << currLp << " | Mixed: " << mix_0_Lp << endl;
+			//	cout << "[New lp] True: " << newLp << " | Mixed: " << mix_1_Lp << endl;
+			//}
+
+			//// TEST if gradients are the same using mixed model vs. not
+			//{
+			//	vector<double> newGradient;
+			//	vector<double> mixGradient;
+			//	vector<double> sharedGradient;
+			//	vector<int> dummy;
+			//	newModel->grad_log_prob(dimMatchMap.translateExtendedToNew(extendedParams), dummy, newGradient);
+			//	weights[0] = 1.0; weights[1] = 1.0;
+			//	mixModel->grad_log_prob(dimMatchMap.translateExtendedToNew(extendedParams), dummy, mixGradient);
+			//	sharedModel->grad_log_prob(dimMatchMap.translateExtendedToNew(extendedParams), dummy, sharedGradient);
+			//	double mse = 0.0;
+			//	for (unsigned int i = 0; i < newGradient.size(); i++)
+			//	{
+			//		double err = (newGradient[i] - mixGradient[i]);
+			//		mse += err*err;
+			//	}
+			//	cout << mse << endl;
+			//}
+
+			//// Try using the pure new model
+			//currentUnrolledModel = templateModel->unroll(newStruct);
+			//innerSampler->reinitialize(newStruct, *currentUnrolledModel, dimMatchMap.translateExtendedToNew(extendedParams));
 
 			// Run the inner HMC kernel for numAnnealingSteps
 			// Adjust the temperature of the factors each step
 			// Accumulate log probability of each intermediate state
-			vector<double>& weights = mixModel->getWeights();
 			double annealingLpRatio = 0.0;
 			double prevAnnealingLp = std::numeric_limits<double>::quiet_NaN();
 			Sample lastAnnealingState;
 			annealingSamples.clear();
-			annealingSamples.push_back(Sample(newStruct, dimMatchMap.translateExtendedToNew(extendedParams), currentUnrolledModel->log_prob(extendedParams), Sample::JumpBegin, true));
+			//annealingSamples.push_back(Sample(newStruct, dimMatchMap.translateExtendedToNew(extendedParams), currentUnrolledModel->log_prob(extendedParams), Sample::JumpBegin, true));
+			annealingSamples.push_back(Sample(newStruct, dimMatchMap.translateExtendedToNew(extendedParams), currentUnrolledModel->log_prob(dimMatchMap.translateExtendedToNew(extendedParams)), Sample::JumpBegin, true));
 			for (unsigned int i = 0; i < numAnnealingSteps; i++)
 			{
 				double temp = ((double)i)/(numAnnealingSteps-1);
-				weights[0] = 1.0 - temp;
-				weights[1] = temp;
-				weights[2] = 1.0;
+				//weights[0] = 1.0 - temp;
+				//weights[1] = temp;
+				//weights[2] = 1.0;
+				weights[0] = 1.0;
+				weights[1] = 1.0;
 
 				lastAnnealingState = innerSampler->nextSample();
 				lastAnnealingState.proposalType = Sample::Annealing;
 				annealingSamples.push_back(lastAnnealingState);
-				annealingSamples.back().params = dimMatchMap.translateExtendedToNew(annealingSamples.back().params);
+				//annealingSamples.back().params = dimMatchMap.translateExtendedToNew(annealingSamples.back().params);
 
 				double currAnnealingLp = lastAnnealingState.logprob;
 				if (prevAnnealingLp == prevAnnealingLp)
@@ -261,25 +307,33 @@ namespace simference
 			numAnnealingMovesAttempted += innerSampler->numMovesAttempted;
 			numAnnealingMovesAccepted += innerSampler->numMovesAccepted;
 
-			// Accept or reject the new structure
-			const vector<double>& propParams = lastAnnealingState.params;
-			double propLp = prevAnnealingLp;
-			double forwardInitProposalLp, reverseInitProposalLp;
-			forwardInitProposalLp = logProposalProbability(currentStruct, currentParams, newStruct, dimMatchMap.translateExtendedToNew(extendedParams));
-			reverseInitProposalLp = logProposalProbability(newStruct, dimMatchMap.translateExtendedToNew(propParams), currentStruct, dimMatchMap.translateExtendedToOld(propParams));
-			double acceptLp = (propLp + reverseInitProposalLp) - (currLp + forwardInitProposalLp) + annealingLpRatio;
-			bool jumpAccepted = false;
-			if (log(Math::Probability::UniformDistribution<double>::Sample()) < acceptLp)
-			{
-				// Update state variables accordingly
-				if (!currentStruct->structurallyEquivalentTo(newStruct))
-					numDiffDimJumpMovesAccepted++;
-				currentStruct = newStruct;
-				currentParams = dimMatchMap.translateExtendedToNew(propParams);
-				currLp = propLp;
-				numJumpMovesAccepted++;
-				jumpAccepted = true;
-			}
+			//// Accept or reject the new structure
+			//const vector<double>& propParams = lastAnnealingState.params;
+			//double propLp = prevAnnealingLp;
+			//double forwardInitProposalLp, reverseInitProposalLp;
+			//forwardInitProposalLp = logProposalProbability(currentStruct, currentParams, newStruct, dimMatchMap.translateExtendedToNew(extendedParams));
+			//reverseInitProposalLp = logProposalProbability(newStruct, dimMatchMap.translateExtendedToNew(propParams), currentStruct, dimMatchMap.translateExtendedToOld(propParams));
+			//double acceptLp = (propLp + reverseInitProposalLp) - (currLp + forwardInitProposalLp) + annealingLpRatio;
+			//bool jumpAccepted = false;
+			//if (log(Math::Probability::UniformDistribution<double>::Sample()) < acceptLp)
+			//{
+			//	// Update state variables accordingly
+			//	if (!currentStruct->structurallyEquivalentTo(newStruct))
+			//		numDiffDimJumpMovesAccepted++;
+			//	currentStruct = newStruct;
+			//	currentParams = dimMatchMap.translateExtendedToNew(propParams);
+			//	currLp = propLp;
+			//	numJumpMovesAccepted++;
+			//	jumpAccepted = true;
+			//}
+			bool jumpAccepted = true;
+			currentStruct = newStruct;
+			currentParams = lastAnnealingState.params;
+			//currentParams = dimMatchMap.translateExtendedToNew(lastAnnealingState.params);
+			currLp = prevAnnealingLp;
+			numJumpMovesAccepted++;
+			if (!currentStruct->structurallyEquivalentTo(newStruct))
+				numDiffDimJumpMovesAccepted++;
 
 			currentUnrolledModel = templateModel->unroll(currentStruct);
 			innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);

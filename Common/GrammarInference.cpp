@@ -29,8 +29,10 @@ namespace simference
 			//fOld.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sOld, root, exclude)));
 			//root.clear(); root.push_back(dtNew->provenance.newSubtreeRoot);
 			//fNew.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sNew, root, exclude)));
-			//exclude.insert(dtNew->provenance.oldSubtreeRoot);
-			//fShared.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sOld, dtOld->roots, exclude)));
+			////exclude.insert(dtNew->provenance.oldSubtreeRoot);
+			////fShared.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sOld, dtOld->roots, exclude)));
+			//exclude.insert(dtNew->provenance.newSubtreeRoot);
+			//fShared.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sNew, dtNew->roots, exclude)));
 
 			// TEST
 			FactorTemplate::unroll(sOld, sNew, fOld, fNew, fShared);
