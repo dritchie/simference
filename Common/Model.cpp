@@ -97,12 +97,9 @@ namespace simference
 			for (auto t : templates)
 				t->unroll(sOld, sNew, fOld, fNew, fShared);
 
-			//mOld = ModelPtr(new DimensionMatchedFactorModel(sOld, numParams, dimMatch.oldParamIndices, fOld));
-			//mNew = ModelPtr(new DimensionMatchedFactorModel(sNew, numParams, dimMatch.newParamIndices, fNew));
-			//mShared = ModelPtr(new DimensionMatchedFactorModel(sOld, numParams, dimMatch.oldParamIndices, fShared));
-
-			mNew = ModelPtr(new FactorModel(sNew, sNew->numParams(), fNew));
-			mShared = ModelPtr(new FactorModel(sNew, sNew->numParams(), fShared));
+			mOld = ModelPtr(new DimensionMatchedFactorModel(sOld, numParams, dimMatch.oldParamIndices, fOld));
+			mNew = ModelPtr(new DimensionMatchedFactorModel(sNew, numParams, dimMatch.newParamIndices, fNew));
+			mShared = ModelPtr(new DimensionMatchedFactorModel(sOld, numParams, dimMatch.oldParamIndices, fShared));
 		}
 
 		MixtureModel::MixtureModel(const vector<ModelPtr>& ms, const vector<double>& ws)
