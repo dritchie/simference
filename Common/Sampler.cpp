@@ -225,16 +225,16 @@ namespace simference
 			ModelPtr currModel, newModel, sharedModel;
 			templateModel->unroll(currentStruct, newStruct, dimMatchMap, currModel, newModel, sharedModel);
 			vector<ModelPtr> models;
-			//models.push_back(currModel);	// 0
+			models.push_back(currModel);	// 0
 			models.push_back(newModel);		// 1
 			models.push_back(sharedModel);	// 2
 			MixtureModel* mixModel = new MixtureModel(models);
 			vector<double>& weights = mixModel->getWeights();
-			//weights[0] = 1.0;
-			//weights[1] = 0.0;
-			//weights[2] = 1.0;
 			weights[0] = 1.0;
-			weights[1] = 1.0;
+			weights[1] = 0.0;
+			weights[2] = 1.0;
+			//weights[0] = 1.0;
+			//weights[1] = 1.0;
 			currentUnrolledModel = ModelPtr(mixModel);
 			innerSampler->reinitialize(newStruct, *currentUnrolledModel, extendedParams);
 
@@ -249,11 +249,11 @@ namespace simference
 			for (unsigned int i = 0; i < numAnnealingSteps; i++)
 			{
 				double temp = ((double)i)/(numAnnealingSteps-1);
-				//weights[0] = 1.0 - temp;
-				//weights[1] = temp;
-				//weights[2] = 1.0;
-				weights[0] = 1.0;
-				weights[1] = 1.0;
+				weights[0] = 1.0 - temp;
+				weights[1] = temp;
+				weights[2] = 1.0;
+				//weights[0] = 1.0;
+				//weights[1] = 1.0;
 
 				lastAnnealingState = innerSampler->nextSample();
 				lastAnnealingState.proposalType = Sample::Annealing;
