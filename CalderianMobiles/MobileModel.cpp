@@ -44,8 +44,8 @@ namespace simference
 			lp += NormalDistribution<var>::LogProb(collsum.weightXweight, 0.0, weightXweightSD);
 
 			// Static equilibrium factor
-			//static const double eqScaleFactor = 0.15;
-			static const double eqScaleFactor = 0.001;
+			static const double eqScaleFactor = 0.15;
+			//static const double eqScaleFactor = 0.001;
 			static const double torqueSD = 360.0 * eqScaleFactor;
 			lp += NormalDistribution<var>::LogProb(mobile.softMaxTorqueNorm(), 0.0, torqueSD);
 

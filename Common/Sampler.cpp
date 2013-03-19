@@ -238,6 +238,23 @@ namespace simference
 			currentUnrolledModel = ModelPtr(mixModel);
 			innerSampler->reinitialize(newStruct, *currentUnrolledModel, extendedParams);
 
+			//// TEST
+			//{
+			//	double initLP = currentUnrolledModel->log_prob(extendedParams);
+			//	weights[0] = 0.9;
+			//	weights[1] = 0.1;
+			//	weights[2] = 1.0;
+			//	double interpLP = currentUnrolledModel->log_prob(extendedParams);
+			//	weights[0] = 0.0;
+			//	weights[1] = 1.0;
+			//	weights[2] = 1.0;
+			//	double finalLP = currentUnrolledModel->log_prob(extendedParams);
+			//	cout << endl << "initLP: " << initLP << endl;
+			//	cout << "interpLP: " << interpLP << endl;
+			//	cout << "finalLP: " << finalLP << endl;
+			//	while (true) {}
+			//}
+
 			// Run the inner HMC kernel for numAnnealingSteps
 			// Adjust the temperature of the factors each step
 			// Accumulate log probability of each intermediate state
@@ -285,6 +302,8 @@ namespace simference
 			//	numJumpMovesAccepted++;
 			//	jumpAccepted = true;
 			//}
+
+			// TEST: While we're debugging, just force acceptance for all jumps
 			bool jumpAccepted = true;
 			currentStruct = newStruct;
 			currentParams = dimMatchMap.translateExtendedToNew(lastAnnealingState.params);
