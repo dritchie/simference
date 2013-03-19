@@ -82,10 +82,9 @@ namespace simference
 			{}
 			// This constructor assumes that epsilon adaptation is done
 			DiffusionSamplerImpl(Model& m, const vector<double>& initParams, const DiffusionSamplerImpl& prev)
-				: nuts(m, 10, prev._epsilon, prev._epsilon_pm, false, prev._delta, prev._gamma, prev._rand_int, &initParams)
+				: nuts(m, 10, prev._epsilon, 0.0, false, 0.6, 0.05, prev._rand_int, &initParams)
+				//: nuts(m, 10, prev._epsilon, prev._epsilon_pm, false, prev._delta, prev._gamma, prev._rand_int, &initParams)
 			{
-				_epsilon_last = prev._epsilon_last;
-				_da = prev._da;
 			}
 			friend class DiffusionSampler;
 		};
@@ -109,6 +108,7 @@ namespace simference
 			structure = s;
 			auto oldimpl = implementation;
 			implementation = new DiffusionSamplerImpl(m, initParams, *oldimpl);
+			//implementation = new DiffusionSamplerImpl(m, initParams);
 			delete oldimpl;
 			prevParams = initParams;
 			numMovesAttempted = numMovesAccepted = 0;
@@ -239,10 +239,6 @@ namespace simference
 			currentUnrolledModel = ModelPtr(mixModel);
 			innerSampler->reinitialize(newStruct, *currentUnrolledModel, extendedParams);
 
-			//// TEST: Try the pure current model
-			//currentUnrolledModel = templateModel->unroll(currentStruct);
-			//innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
-
 			// Run the inner HMC kernel for numAnnealingSteps
 			// Adjust the temperature of the factors each step
 			// Accumulate log probability of each intermediate state
@@ -251,13 +247,12 @@ namespace simference
 			Sample lastAnnealingState;
 			annealingSamples.clear();
 			annealingSamples.push_back(Sample(newStruct, dimMatchMap.translateExtendedToNew(extendedParams), currentUnrolledModel->log_prob(extendedParams), Sample::JumpBegin, true));
-			//annealingSamples.push_back(Sample(currentStruct, currentParams, currentUnrolledModel->log_prob(currentParams), Sample::JumpBegin, true));
 			for (unsigned int i = 0; i < numAnnealingSteps; i++)
 			{
 				double temp = ((double)i)/(numAnnealingSteps-1);
-				weights[0] = 1.0 - temp;
-				weights[1] = temp;
-				weights[2] = 1.0;
+				//weights[0] = 1.0 - temp;
+				//weights[1] = temp;
+				//weights[2] = 1.0;
 
 				lastAnnealingState = innerSampler->nextSample();
 				lastAnnealingState.proposalType = Sample::Annealing;
@@ -293,7 +288,6 @@ namespace simference
 			//}
 			bool jumpAccepted = true;
 			currentStruct = newStruct;
-			//currentParams = lastAnnealingState.params;
 			currentParams = dimMatchMap.translateExtendedToNew(lastAnnealingState.params);
 			currLp = prevAnnealingLp;
 			numJumpMovesAccepted++;
@@ -327,6 +321,36 @@ namespace simference
 
 				if (m < num_warmup)
 				{
+					//// TEST: Try reconstructing the sampler to see if this breaks things
+					//if (m == num_warmup/2)
+					//{
+					//	DimensionMatchMap dimMatchMap;
+					//	std::vector<double> extendedParams;
+					//	auto newStruct = jumpProposal(extendedParams, dimMatchMap);
+
+					//	//currentParams = dimMatchMap.translateExtendedToNew(extendedParams);
+					//	//currentUnrolledModel = templateModel->unroll(currentStruct);
+
+					//	cout << endl << "epsilon: " << this->innerSampler->implementation->_epsilon << endl;
+
+					//	ModelPtr currModel, newModel, sharedModel;
+					//	templateModel->unroll(currentStruct, newStruct, dimMatchMap, currModel, newModel, sharedModel);
+					//	vector<ModelPtr> models;
+					//	models.push_back(currModel);	// 0
+					//	models.push_back(newModel);		// 1
+					//	models.push_back(sharedModel);	// 2
+					//	MixtureModel* mixModel = new MixtureModel(models);
+					//	vector<double>& weights = mixModel->getWeights();
+					//	weights[0] = 0.0;
+					//	weights[1] = 1.0;
+					//	weights[2] = 1.0;
+					//	currentUnrolledModel = ModelPtr(mixModel);
+					//	currentStruct = newStruct;
+					//	currentParams = extendedParams;
+
+					//	innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
+					//}
+
 					Sample sample = nextSample();
 					if (save_warmup && (m % num_thin) == 0)
 					{
@@ -335,17 +359,16 @@ namespace simference
 				}
 				else 
 				{
+					//if (m == num_warmup)
+					//{
+					//	cout << endl << "epsilon: " << this->innerSampler->implementation->_epsilon << endl;
+					//}
+
 					if (epsilon_adapt && adapting())
 					{
 						adaptOff();
 						jumpFrequency = jumpProb;
 					}
-
-					//// TEST: Try reconstructing the sampler to see if this breaks things
-					//if (m == num_warmup)
-					//{
-					//	innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
-					//}
 
 					unsigned int numJumps = numJumpMovesAttempted;
 					Sample sample = nextSample();

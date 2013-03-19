@@ -185,10 +185,10 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	else if (key == 'l')
 	{
-		static const unsigned int numLARJiters = 105/*1000*//*5*/;	// RESET this to 1000
-		static const unsigned int numLARJwarmup = 100/*0*/;	// RESET this to 100
+		static const unsigned int numLARJiters = /*205*/1000/*5*/;	// RESET this to 1000
+		static const unsigned int numLARJwarmup = 200/*0*/;	// RESET this to 100
 		static const unsigned int numLARJannealSteps = 20;
-		static const double jumpFreq = /*0.0*/1.0;				// RESET this to 0.1
+		static const double jumpFreq = 0.0/*1.0*/;				// RESET this to 0.1
 
 		// Test LARJ sampling
 		vector<var> params; derivationTree->getParams(params);
