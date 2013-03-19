@@ -168,22 +168,6 @@ namespace simference
 			std::vector<ModelPtr> models;
 			std::vector<double> weights;
 		};
-
-		class IndirectionModel : public Model
-		{
-		public:
-			IndirectionModel(ModelPtr im) : Model(im->num_params_r()), innerModel(im) {}
-			stan::agrad::var log_prob(const std::vector<stan::agrad::var>& params_r)
-			{
-				return innerModel->log_prob(params_r);
-			}
-			void setInnerModel(ModelPtr im);
-
-		private:
-			ModelPtr innerModel;
-		};
-
-		typedef std::shared_ptr<IndirectionModel> IndirectionModelPtr; 
 	}
 }
 

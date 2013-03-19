@@ -127,16 +127,5 @@ namespace simference
 				lp += weights[i] * models[i]->log_prob(params_r);
 			return lp;
 		}
-
-		void IndirectionModel::setInnerModel(ModelPtr im)
-		{
-			innerModel = im;
-			num_params_r__ = im->num_params_r();
-			param_ranges_i__.resize(im->num_params_i());
-			for (unsigned int i = 0; i < im->num_params_i(); i++)
-			{
-				param_ranges_i__[i] = im->param_range_i(i);
-			}
-		}
 	}
 }
