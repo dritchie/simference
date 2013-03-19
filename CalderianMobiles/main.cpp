@@ -57,10 +57,17 @@ void keyboard(unsigned char key, int x, int y)
 		derivationTree = shared_ptr<DerivationTree<RealNum>>(new DerivationTree<RealNum>(*axiom));
 		if (mobile) delete mobile;
 		mobile = new Mobile<RealNum>(derivationTree->derivation, anchor);
-
-		//cout << "param log prob: " << derivationTree->paramLogProb() << endl;
-
 		needsRedisplay = true;
+	}
+	else if (key == 'p')
+	{
+		FactorTemplateModel ftm;
+		ftm.addTemplate(FactorTemplatePtr(new GrammarFactorTemplate));
+		ftm.addTemplate(FactorTemplatePtr(new MobileFactorTemplate(anchor)));
+		ModelPtr model = ftm.unroll(derivationTree);
+		vector<var> p; derivationTree->getParams(p);
+		vector<double> params; for (auto d : p) params.push_back(d.val());
+		cout << "log prob: " << model->log_prob(params) << endl;
 	}
 	else if (key == 'c')
 	{
@@ -150,8 +157,6 @@ void keyboard(unsigned char key, int x, int y)
 		derivationTree->setParams(params);
 		mobile->updateAnchors();
 		needsRedisplay = true;
-
-		cout << "param log prob: " << derivationTree->paramLogProb() << endl;
 	}
 	else if (key == 'j')
 	{
@@ -180,17 +185,17 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	else if (key == 'l')
 	{
-		static const unsigned int numLARJiters = 5;	// RESET this to 1000
-		static const unsigned int numLARJwarmup = 0;	// RESET this to 100
+		static const unsigned int numLARJiters = /*105*/1000/*5*/;	// RESET this to 1000
+		static const unsigned int numLARJwarmup = 100/*0*/;	// RESET this to 100
 		static const unsigned int numLARJannealSteps = 20;
-		static const double jumpFreq = 1.0;				// RESET this to 0.1
+		static const double jumpFreq = 0.0/*1.0*/;				// RESET this to 0.1
 
 		// Test LARJ sampling
 		vector<var> params; derivationTree->getParams(params);
 		vector<double> p; for (auto var : params) p.push_back(var.val());
 		FactorTemplateModelPtr ftmp = FactorTemplateModelPtr(new FactorTemplateModel);
 		ftmp->addTemplate(FactorTemplatePtr(new GrammarFactorTemplate));
-		//ftmp->addTemplate(FactorTemplatePtr(new MobileFactorTemplate(anchor)));
+		ftmp->addTemplate(FactorTemplatePtr(new MobileFactorTemplate(anchor)));
 		GrammarJumpSampler gs(ftmp, derivationTree, p, numLARJannealSteps, jumpFreq);
 
 		mostRecentSamples.clear();

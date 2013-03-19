@@ -82,8 +82,11 @@ namespace simference
 			{}
 			// This constructor assumes that epsilon adaptation is done
 			DiffusionSamplerImpl(Model& m, const vector<double>& initParams, const DiffusionSamplerImpl& prev)
-				: nuts(m, 10, /*prev._epsilon*/0.00074017, 0.0, false, 0.6, 0.05, prev._rand_int, &initParams)
-			{}
+				: nuts(m, 10, prev._epsilon, prev._epsilon_pm, false, prev._delta, prev._gamma, prev._rand_int, &initParams)
+			{
+				_epsilon_last = prev._epsilon_last;
+				_da = prev._da;
+			}
 			friend class DiffusionSampler;
 		};
 
@@ -221,20 +224,24 @@ namespace simference
 			std::vector<double> extendedParams;
 			StructurePtr newStruct = jumpProposal(extendedParams, dimMatchMap);
 
-			// Unroll factors for the current structure and new structure
-			ModelPtr currModel, newModel, sharedModel;
-			templateModel->unroll(currentStruct, newStruct, dimMatchMap, currModel, newModel, sharedModel);
-			vector<ModelPtr> models;
-			models.push_back(currModel);	// 0
-			models.push_back(newModel);		// 1
-			models.push_back(sharedModel);	// 2
-			MixtureModel* mixModel = new MixtureModel(models);
-			vector<double>& weights = mixModel->getWeights();
-			weights[0] = 1.0;
-			weights[1] = 0.0;
-			weights[2] = 1.0;
-			currentUnrolledModel = ModelPtr(mixModel);
-			innerSampler->reinitialize(newStruct, *currentUnrolledModel, extendedParams);
+			//// Unroll factors for the current structure and new structure
+			//ModelPtr currModel, newModel, sharedModel;
+			//templateModel->unroll(currentStruct, newStruct, dimMatchMap, currModel, newModel, sharedModel);
+			//vector<ModelPtr> models;
+			//models.push_back(currModel);	// 0
+			//models.push_back(newModel);		// 1
+			//models.push_back(sharedModel);	// 2
+			//MixtureModel* mixModel = new MixtureModel(models);
+			//vector<double>& weights = mixModel->getWeights();
+			//weights[0] = 1.0;
+			//weights[1] = 0.0;
+			//weights[2] = 1.0;
+			//currentUnrolledModel = ModelPtr(mixModel);
+			//innerSampler->reinitialize(newStruct, *currentUnrolledModel, extendedParams);
+
+			// TEST: Try the pure current model
+			currentUnrolledModel = templateModel->unroll(currentStruct);
+			innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
 
 			// Run the inner HMC kernel for numAnnealingSteps
 			// Adjust the temperature of the factors each step
@@ -243,18 +250,19 @@ namespace simference
 			double prevAnnealingLp = std::numeric_limits<double>::quiet_NaN();
 			Sample lastAnnealingState;
 			annealingSamples.clear();
-			annealingSamples.push_back(Sample(newStruct, dimMatchMap.translateExtendedToNew(extendedParams), currentUnrolledModel->log_prob(extendedParams), Sample::JumpBegin, true));
+			//annealingSamples.push_back(Sample(newStruct, dimMatchMap.translateExtendedToNew(extendedParams), currentUnrolledModel->log_prob(extendedParams), Sample::JumpBegin, true));
+			annealingSamples.push_back(Sample(currentStruct, currentParams, currentUnrolledModel->log_prob(currentParams), Sample::JumpBegin, true));
 			for (unsigned int i = 0; i < numAnnealingSteps; i++)
 			{
 				double temp = ((double)i)/(numAnnealingSteps-1);
-				weights[0] = 1.0 - temp;
-				weights[1] = temp;
-				weights[2] = 1.0;
+				//weights[0] = 1.0 - temp;
+				//weights[1] = temp;
+				//weights[2] = 1.0;
 
 				lastAnnealingState = innerSampler->nextSample();
 				lastAnnealingState.proposalType = Sample::Annealing;
 				annealingSamples.push_back(lastAnnealingState);
-				annealingSamples.back().params = dimMatchMap.translateExtendedToNew(annealingSamples.back().params);
+				//annealingSamples.back().params = dimMatchMap.translateExtendedToNew(annealingSamples.back().params);
 
 				double currAnnealingLp = lastAnnealingState.logprob;
 				if (prevAnnealingLp == prevAnnealingLp)
@@ -284,9 +292,9 @@ namespace simference
 			//	jumpAccepted = true;
 			//}
 			bool jumpAccepted = true;
-			currentStruct = newStruct;
+			//currentStruct = newStruct;
 			currentParams = lastAnnealingState.params;
-			currentParams = dimMatchMap.translateExtendedToNew(lastAnnealingState.params);
+			//currentParams = dimMatchMap.translateExtendedToNew(lastAnnealingState.params);
 			currLp = prevAnnealingLp;
 			numJumpMovesAccepted++;
 			if (!currentStruct->structurallyEquivalentTo(newStruct))
@@ -327,6 +335,12 @@ namespace simference
 					if (epsilon_adapt && adapting())
 					{
 						adaptOff();
+					}
+
+					// TEST: Try reconstructing the sampler to see if this breaks things
+					if (m == num_warmup)
+					{
+						innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
 					}
 
 					unsigned int numJumps = numJumpMovesAttempted;
