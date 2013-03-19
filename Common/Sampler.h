@@ -58,7 +58,7 @@ namespace simference
 		public:
 			DiffusionSampler(StructurePtr s, Models::Model& m, const std::vector<double>& initParams);
 			~DiffusionSampler();
-			void reinitialize(StructurePtr s, Models::Model& m, const std::vector<double>& initParams);
+			void reinitialize(StructurePtr s, const std::vector<double>& initParams);
 			Sample nextSample();
 			void adaptOn();
 			void adaptOff();
@@ -114,7 +114,7 @@ namespace simference
 
 			DiffusionSamplerPtr innerSampler;
 			Models::FactorTemplateModelPtr templateModel;
-			Models::ModelPtr currentUnrolledModel;
+			Models::IndirectionModelPtr unrolledModel;
 			StructurePtr currentStruct;
 			std::vector<double> currentParams;
 			unsigned int numAnnealingSteps;

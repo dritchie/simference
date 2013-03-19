@@ -80,12 +80,12 @@ namespace simference
 			DiffusionSamplerImpl(Model& m, const vector<double>& initParams)
 				: nuts(m, 10, -1, 0.0, true, 0.6, 0.05, DiffusionRNG((uint32_t)time(0)), &initParams)
 			{}
-			// This constructor assumes that epsilon adaptation is done
-			DiffusionSamplerImpl(Model& m, const vector<double>& initParams, const DiffusionSamplerImpl& prev)
-				: nuts(m, 10, prev._epsilon, prev._epsilon_pm, false, prev._delta, prev._gamma, prev._rand_int, &initParams)
+			void reinitialize(const vector<double>& initParams)
 			{
-				_epsilon_last = prev._epsilon_last;
-				_da = prev._da;
+				assert(initParams.size() == _model.num_params_r());
+				_x = initParams;
+				_z.resize(_model.num_params_i(), 0);
+				_logp = _model.grad_log_prob(_x, _z, _g);
 			}
 			friend class DiffusionSampler;
 		};
@@ -101,15 +101,13 @@ namespace simference
 			delete implementation;
 		}
 
-		void DiffusionSampler::reinitialize(StructurePtr s, Model& m, const vector<double>& initParams)
+		void DiffusionSampler::reinitialize(StructurePtr s, const vector<double>& initParams)
 		{
 			// This feels so dirty, but it covers up a bug that I haven't been able to track down...
 			stan::agrad::recover_memory();
 
 			structure = s;
-			auto oldimpl = implementation;
-			implementation = new DiffusionSamplerImpl(m, initParams, *oldimpl);
-			delete oldimpl;
+			implementation->reinitialize(initParams);
 			prevParams = initParams;
 			numMovesAttempted = numMovesAccepted = 0;
 		}
@@ -176,8 +174,8 @@ namespace simference
 			numJumpMovesAttempted(0), numJumpMovesAccepted(0), numDiffDimJumpMovesAccepted(0),
 			numAnnealingMovesAttempted(0), numAnnealingMovesAccepted(0)
 		{
-			currentUnrolledModel = templateModel->unroll(initStruct);
-			innerSampler = DiffusionSamplerPtr(new DiffusionSampler(initStruct, *currentUnrolledModel, initParams));
+			unrolledModel = IndirectionModelPtr(new IndirectionModel(templateModel->unroll(initStruct)));
+			innerSampler = DiffusionSamplerPtr(new DiffusionSampler(initStruct, *unrolledModel, initParams));
 		}
 
 		Sample JumpSampler::nextSample()
@@ -217,31 +215,27 @@ namespace simference
 		{
 			numJumpMovesAttempted++;
 
-			double currLp = currentUnrolledModel->log_prob(currentParams);
+			double currLp = static_pointer_cast<Model>(unrolledModel)->log_prob(currentParams);
 
 			// Propose new structure and do dimension matching
 			DimensionMatchMap dimMatchMap;
 			std::vector<double> extendedParams;
 			StructurePtr newStruct = jumpProposal(extendedParams, dimMatchMap);
 
-			//// Unroll factors for the current structure and new structure
-			//ModelPtr currModel, newModel, sharedModel;
-			//templateModel->unroll(currentStruct, newStruct, dimMatchMap, currModel, newModel, sharedModel);
-			//vector<ModelPtr> models;
-			//models.push_back(currModel);	// 0
-			//models.push_back(newModel);		// 1
-			//models.push_back(sharedModel);	// 2
-			//MixtureModel* mixModel = new MixtureModel(models);
-			//vector<double>& weights = mixModel->getWeights();
-			//weights[0] = 1.0;
-			//weights[1] = 0.0;
-			//weights[2] = 1.0;
-			//currentUnrolledModel = ModelPtr(mixModel);
-			//innerSampler->reinitialize(newStruct, *currentUnrolledModel, extendedParams);
-
-			// TEST: Try the pure current model
-			currentUnrolledModel = templateModel->unroll(currentStruct);
-			innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
+			// Unroll factors for the current structure and new structure
+			ModelPtr currModel, newModel, sharedModel;
+			templateModel->unroll(currentStruct, newStruct, dimMatchMap, currModel, newModel, sharedModel);
+			vector<ModelPtr> models;
+			models.push_back(currModel);	// 0
+			models.push_back(newModel);		// 1
+			models.push_back(sharedModel);	// 2
+			MixtureModel* mixModel = new MixtureModel(models);
+			vector<double>& weights = mixModel->getWeights();
+			weights[0] = 1.0;
+			weights[1] = 0.0;
+			weights[2] = 1.0;
+			unrolledModel->setInnerModel(ModelPtr(mixModel));
+			innerSampler->reinitialize(newStruct, extendedParams);
 
 			// Run the inner HMC kernel for numAnnealingSteps
 			// Adjust the temperature of the factors each step
@@ -250,19 +244,18 @@ namespace simference
 			double prevAnnealingLp = std::numeric_limits<double>::quiet_NaN();
 			Sample lastAnnealingState;
 			annealingSamples.clear();
-			//annealingSamples.push_back(Sample(newStruct, dimMatchMap.translateExtendedToNew(extendedParams), currentUnrolledModel->log_prob(extendedParams), Sample::JumpBegin, true));
-			annealingSamples.push_back(Sample(currentStruct, currentParams, currentUnrolledModel->log_prob(currentParams), Sample::JumpBegin, true));
+			annealingSamples.push_back(Sample(newStruct, dimMatchMap.translateExtendedToNew(extendedParams), static_pointer_cast<Model>(unrolledModel)->log_prob(extendedParams), Sample::JumpBegin, true));
 			for (unsigned int i = 0; i < numAnnealingSteps; i++)
 			{
 				double temp = ((double)i)/(numAnnealingSteps-1);
-				//weights[0] = 1.0 - temp;
-				//weights[1] = temp;
-				//weights[2] = 1.0;
+				weights[0] = 1.0 - temp;
+				weights[1] = temp;
+				weights[2] = 1.0;
 
 				lastAnnealingState = innerSampler->nextSample();
 				lastAnnealingState.proposalType = Sample::Annealing;
 				annealingSamples.push_back(lastAnnealingState);
-				//annealingSamples.back().params = dimMatchMap.translateExtendedToNew(annealingSamples.back().params);
+				annealingSamples.back().params = dimMatchMap.translateExtendedToNew(annealingSamples.back().params);
 
 				double currAnnealingLp = lastAnnealingState.logprob;
 				if (prevAnnealingLp == prevAnnealingLp)
@@ -292,16 +285,15 @@ namespace simference
 			//	jumpAccepted = true;
 			//}
 			bool jumpAccepted = true;
-			//currentStruct = newStruct;
-			currentParams = lastAnnealingState.params;
-			//currentParams = dimMatchMap.translateExtendedToNew(lastAnnealingState.params);
+			currentStruct = newStruct;
+			currentParams = dimMatchMap.translateExtendedToNew(lastAnnealingState.params);
 			currLp = prevAnnealingLp;
 			numJumpMovesAccepted++;
 			if (!currentStruct->structurallyEquivalentTo(newStruct))
 				numDiffDimJumpMovesAccepted++;
 
-			currentUnrolledModel = templateModel->unroll(currentStruct);
-			innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
+			unrolledModel->setInnerModel(templateModel->unroll(currentStruct));
+			innerSampler->reinitialize(currentStruct, currentParams);
 
 			return Sample(currentStruct, currentParams, currLp, Sample::JumpEnd, jumpAccepted);
 		}
@@ -313,9 +305,13 @@ namespace simference
 								int num_thin,
 								bool save_warmup)
 		{
+			// Remember the jump probability
+			double jumpProb = jumpFrequency;
+
 			if (epsilon_adapt)
 			{
 				adaptOn();
+				jumpFrequency = 0.0;
 			}
 			for (int m = 0; m < num_iterations; ++m)
 			{
@@ -323,25 +319,25 @@ namespace simference
 
 				if (m < num_warmup)
 				{
-					// Don't start dimension jumping until after warm-up.
-					Sample sample = innerSampler->nextSample();
+					Sample sample = nextSample();
 					if (save_warmup && (m % num_thin) == 0)
 					{
 						samples.push_back(sample);
-					} 
+					}
 				}
 				else 
 				{
 					if (epsilon_adapt && adapting())
 					{
 						adaptOff();
+						jumpFrequency = jumpProb;
 					}
 
-					// TEST: Try reconstructing the sampler to see if this breaks things
-					if (m == num_warmup)
-					{
-						innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
-					}
+					//// TEST: Try reconstructing the sampler to see if this breaks things
+					//if (m == num_warmup)
+					//{
+					//	innerSampler->reinitialize(currentStruct, currentParams);
+					//}
 
 					unsigned int numJumps = numJumpMovesAttempted;
 					Sample sample = nextSample();
