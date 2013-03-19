@@ -143,7 +143,7 @@ void keyboard(unsigned char key, int x, int y)
 		ModelPtr model = ftm.unroll(derivationTree);
 		vector<Sample> samples;
 		DiffusionSampler sampler(StructurePtr(NULL), *model, initParams);
-		sampler.sample(samples, numHmcIters, numWarmup);
+		Sampler::sample(sampler, samples, numHmcIters, numWarmup);
 
 		sampler.writeAnalytics(cout);
 
@@ -185,10 +185,9 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	else if (key == 'l')
 	{
-		static const unsigned int numLARJiters = /*205*/1000/*5*/;	// RESET this to 1000
-		static const unsigned int numLARJwarmup = 200/*0*/;	// RESET this to 100
-		static const unsigned int numLARJannealSteps = 20;
-		static const double jumpFreq = 0.0/*1.0*/;				// RESET this to 0.1
+		static const unsigned int numLARJiters = 100/*1000*/;	// RESET this to 1000
+		static const unsigned int numLARJannealSteps = 50;
+		static const double jumpFreq = 0.1/*1.0*/;				// RESET this to 0.1
 
 		// Test LARJ sampling
 		vector<var> params; derivationTree->getParams(params);
@@ -199,7 +198,7 @@ void keyboard(unsigned char key, int x, int y)
 		GrammarJumpSampler gs(ftmp, derivationTree, p, numLARJannealSteps, jumpFreq);
 
 		mostRecentSamples.clear();
-		gs.sample(mostRecentSamples, numLARJiters, numLARJwarmup);
+		JumpSampler::sample(gs, mostRecentSamples, numLARJiters);
 
 		gs.writeAnalytics(cout);
 	}

@@ -39,7 +39,9 @@ namespace simference
 			virtual void adaptOff() = 0;
 			virtual bool adapting() = 0;
 
-			virtual void sample(std::vector<Sample>& samples,
+			static void sample( Sampler& sampler,
+								// Where to store generated samples
+								std::vector<Sample>& samples,
 								// How many iterations to run sampling for.
 								int num_iterations = 1000,
 								// How many of the above iterations count as 'warm-up' (samples discarded)
@@ -94,12 +96,12 @@ namespace simference
 			void adaptOff();
 			bool adapting();
 
-			void sample(std::vector<Sample>& samples,
-						int num_iterations = 1000,
-						int num_warmup = 100,
-						bool epsilon_adapt = true,
-						int num_thin = 1,
-						bool save_warmup = false);
+			// The ideal adaptation behavior is different for LARJ, so we
+			// use a specialized multi-sample routine
+			static void sample(JumpSampler& sampler,
+								std::vector<Sample>& samples,
+								int num_iterations = 1000,
+								int num_thin = 1);
 
 			void writeAnalytics(std::ostream& out) const;
 

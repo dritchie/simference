@@ -22,7 +22,9 @@ namespace simference
 			out << "[Sample] Proposal: " << propStr << " | Accepted: " << accepted << " | LogProb: " << logprob << endl;
 		}
 
-		void Sampler::sample(std::vector<Sample>& samples,
+		void Sampler::sample(Sampler& sampler,
+							// Where to store samples
+							std::vector<Sample>& samples,
 							// How many iterations to run sampling for.
 							int num_iterations,
 							// How many of the above iterations count as 'warm-up' (samples discarded)
@@ -36,13 +38,13 @@ namespace simference
 		{
 			if (epsilon_adapt)
 			{
-				adaptOn();
+				sampler.adaptOn();
 			}
 			for (int m = 0; m < num_iterations; ++m)
 			{
 				printf("Sampling iteration %d / %d\r", m+1, num_iterations);
 
-				Sample sample = nextSample();
+				Sample sample = sampler.nextSample();
 
 				if (m < num_warmup)
 				{
@@ -53,9 +55,9 @@ namespace simference
 				}
 				else 
 				{
-					if (epsilon_adapt && adapting())
+					if (epsilon_adapt && sampler.adapting())
 					{
-						adaptOff();
+						sampler.adaptOff();
 					}
 					if (((m - num_warmup) % num_thin) != 0)
 					{
@@ -80,10 +82,8 @@ namespace simference
 			DiffusionSamplerImpl(Model& m, const vector<double>& initParams)
 				: nuts(m, 10, -1, 0.0, true, 0.6, 0.05, DiffusionRNG((uint32_t)time(0)), &initParams)
 			{}
-			// This constructor assumes that epsilon adaptation is done
 			DiffusionSamplerImpl(Model& m, const vector<double>& initParams, const DiffusionSamplerImpl& prev)
-				: nuts(m, 10, prev._epsilon, 0.0, false, 0.6, 0.05, prev._rand_int, &initParams)
-				//: nuts(m, 10, prev._epsilon, prev._epsilon_pm, false, prev._delta, prev._gamma, prev._rand_int, &initParams)
+				: nuts(m, 10, prev._epsilon, prev._epsilon_pm, prev._epsilon_adapt, prev._delta, prev._gamma, prev._rand_int, &initParams)
 			{
 			}
 			friend class DiffusionSampler;
@@ -108,7 +108,6 @@ namespace simference
 			structure = s;
 			auto oldimpl = implementation;
 			implementation = new DiffusionSamplerImpl(m, initParams, *oldimpl);
-			//implementation = new DiffusionSamplerImpl(m, initParams);
 			delete oldimpl;
 			prevParams = initParams;
 			numMovesAttempted = numMovesAccepted = 0;
@@ -250,9 +249,9 @@ namespace simference
 			for (unsigned int i = 0; i < numAnnealingSteps; i++)
 			{
 				double temp = ((double)i)/(numAnnealingSteps-1);
-				//weights[0] = 1.0 - temp;
-				//weights[1] = temp;
-				//weights[2] = 1.0;
+				weights[0] = 1.0 - temp;
+				weights[1] = temp;
+				weights[2] = 1.0;
 
 				lastAnnealingState = innerSampler->nextSample();
 				lastAnnealingState.proposalType = Sample::Annealing;
@@ -300,92 +299,34 @@ namespace simference
 			return Sample(currentStruct, currentParams, currLp, Sample::JumpEnd, jumpAccepted);
 		}
 
-		void JumpSampler::sample(vector<Sample>& samples,
+		void JumpSampler::sample(JumpSampler& sampler,
+								vector<Sample>& samples,
 								int num_iterations,
-								int num_warmup ,
-								bool epsilon_adapt,
-								int num_thin,
-								bool save_warmup)
+								int num_thin)
 		{
-			// Remember the correct jump probability
-			double jumpProb = jumpFrequency;
+			// We must use adaptation all the time, because
+			// the optimal epsilon changes as we jump into different subspaces.
+			sampler.adaptOn();
 
-			if (epsilon_adapt)
-			{
-				adaptOn();
-				jumpFrequency = 0.0;
-			}
 			for (int m = 0; m < num_iterations; ++m)
 			{
 				printf("Sampling iteration %d / %d\r", m+1, num_iterations);
 
-				if (m < num_warmup)
+				unsigned int numJumps = sampler.numJumpMovesAttempted;
+				Sample sample = sampler.nextSample();
+
+				if ((m % num_thin) != 0)
 				{
-					//// TEST: Try reconstructing the sampler to see if this breaks things
-					//if (m == num_warmup/2)
-					//{
-					//	DimensionMatchMap dimMatchMap;
-					//	std::vector<double> extendedParams;
-					//	auto newStruct = jumpProposal(extendedParams, dimMatchMap);
-
-					//	//currentParams = dimMatchMap.translateExtendedToNew(extendedParams);
-					//	//currentUnrolledModel = templateModel->unroll(currentStruct);
-
-					//	cout << endl << "epsilon: " << this->innerSampler->implementation->_epsilon << endl;
-
-					//	ModelPtr currModel, newModel, sharedModel;
-					//	templateModel->unroll(currentStruct, newStruct, dimMatchMap, currModel, newModel, sharedModel);
-					//	vector<ModelPtr> models;
-					//	models.push_back(currModel);	// 0
-					//	models.push_back(newModel);		// 1
-					//	models.push_back(sharedModel);	// 2
-					//	MixtureModel* mixModel = new MixtureModel(models);
-					//	vector<double>& weights = mixModel->getWeights();
-					//	weights[0] = 0.0;
-					//	weights[1] = 1.0;
-					//	weights[2] = 1.0;
-					//	currentUnrolledModel = ModelPtr(mixModel);
-					//	currentStruct = newStruct;
-					//	currentParams = extendedParams;
-
-					//	innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
-					//}
-
-					Sample sample = nextSample();
-					if (save_warmup && (m % num_thin) == 0)
-					{
-						samples.push_back(sample);
-					} 
+					continue;
 				}
 				else 
 				{
-					//if (m == num_warmup)
-					//{
-					//	cout << endl << "epsilon: " << this->innerSampler->implementation->_epsilon << endl;
-					//}
-
-					if (epsilon_adapt && adapting())
+					// If we just jumped, then we should splice in the annealing samples, too.
+					if (sampler.numJumpMovesAttempted > numJumps)
 					{
-						adaptOff();
-						jumpFrequency = jumpProb;
+						samples.insert(samples.end(), sampler.annealingSamples.begin(), sampler.annealingSamples.end());
 					}
-
-					unsigned int numJumps = numJumpMovesAttempted;
-					Sample sample = nextSample();
-
-					if (((m - num_warmup) % num_thin) != 0)
-					{
-						continue;
-					}
-					else 
-					{
-						// If we just jumped, then we should splice in the annealing samples, too.
-						if (numJumpMovesAttempted > numJumps)
-						{
-							samples.insert(samples.end(), annealingSamples.begin(), annealingSamples.end());
-						}
-						samples.push_back(sample);
-					}
+					samples.push_back(sample);
 				}
 			}
 			printf("\n");
