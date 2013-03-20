@@ -299,6 +299,15 @@ namespace simference
 				jumpAccepted = true;
 			}
 
+			//// TEST: While we're debugging, just force acceptance for all jumps
+			//bool jumpAccepted = true;
+			//currentStruct = newStruct;
+			//currentParams = dimMatchMap.translateExtendedToNew(propParams);
+			//currLp = propLp;
+			//numJumpMovesAccepted++;
+			//if (!currentStruct->structurallyEquivalentTo(newStruct))
+			//	numDiffDimJumpMovesAccepted++;
+
 			currentUnrolledModel = templateModel->unroll(currentStruct);
 			innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
 
