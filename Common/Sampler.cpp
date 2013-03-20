@@ -111,6 +111,8 @@ namespace simference
 			delete oldimpl;
 			prevParams = initParams;
 			numMovesAttempted = numMovesAccepted = 0;
+
+			stan::agrad::recover_memory();
 		}
 
 		bool DiffusionSampler::paramsEqual(const std::vector<double>& p1, const std::vector<double>& p2)
@@ -240,36 +242,46 @@ namespace simference
 
 			// Run the inner HMC kernel for numAnnealingSteps
 			// Adjust the temperature of the factors each step
-			// Accumulate log probability of each intermediate state
-			double annealingLpRatio = 0.0;
-			double prevAnnealingLp = std::numeric_limits<double>::quiet_NaN();
-			Sample lastAnnealingState;
+			// Accumulate probability ratio as we go
 			annealingSamples.clear();
-			annealingSamples.push_back(Sample(newStruct, dimMatchMap.translateExtendedToNew(extendedParams), currentUnrolledModel->log_prob(extendedParams), Sample::JumpBegin, true));
-			for (unsigned int i = 0; i <= numAnnealingSteps; i++)
+			annealingSamples.push_back(Sample(newStruct, extendedParams, currLp, Sample::JumpBegin, true));
+			double annealingLpRatio = 0.0;
+			for (unsigned int i = 0; i < numAnnealingSteps; i++)
 			{
 				double alpha = ((double)i)/numAnnealingSteps;
 				weights[0] = 1.0 - alpha;
 				weights[1] = alpha;
 				weights[2] = 1.0;
 
-				lastAnnealingState = innerSampler->nextSample();
-				lastAnnealingState.proposalType = Sample::Annealing;
-				annealingSamples.push_back(lastAnnealingState);
-				annealingSamples.back().params = dimMatchMap.translateExtendedToNew(annealingSamples.back().params);
+				unsigned int prevNumAccept = innerSampler->numMovesAccepted;
+				auto samp = innerSampler->nextSample();
+				unsigned int currNumAccept = innerSampler->numMovesAccepted;
+				samp.proposalType = Sample::Annealing;
+				if (currNumAccept == prevNumAccept)
+				{
+					// If we rejected this proposal, we need to re-compute its log probability, since
+					// the fixed-dimension inner sampler will give us the last accepted probability, which is
+					// outdated due to annealing interpolation.
+					samp.logprob = currentUnrolledModel->log_prob(samp.params);
+				}
 
-				// NOTE: This is slightly wrong, actually. Look at the LARJ paper again.
-				double currAnnealingLp = lastAnnealingState.logprob;
-				if (prevAnnealingLp == prevAnnealingLp)
-					annealingLpRatio += (prevAnnealingLp - currAnnealingLp);
-				prevAnnealingLp = currAnnealingLp;
+				vector<double>& xt = annealingSamples.back().params;
+				double lpt = currentUnrolledModel->log_prob(xt);
+				double lptplus1 = samp.logprob;
+				annealingLpRatio += (lpt - lptplus1);
+
+				annealingSamples.push_back(samp);
 			}
 			numAnnealingMovesAttempted += innerSampler->numMovesAttempted;
 			numAnnealingMovesAccepted += innerSampler->numMovesAccepted;
 
+			weights[0] = 0.0;
+			weights[1] = 1.0;
+			weights[2] = 1.0;
+			vector<double>& propParams = annealingSamples.back().params;
+			double propLp = currentUnrolledModel->log_prob(propParams);
+
 			// Accept or reject the new structure
-			const vector<double>& propParams = lastAnnealingState.params;
-			double propLp = prevAnnealingLp;
 			double forwardInitProposalLp, reverseInitProposalLp;
 			forwardInitProposalLp = logProposalProbability(currentStruct, currentParams, newStruct, dimMatchMap.translateExtendedToNew(extendedParams));
 			reverseInitProposalLp = logProposalProbability(newStruct, dimMatchMap.translateExtendedToNew(propParams), currentStruct, dimMatchMap.translateExtendedToOld(propParams));
@@ -287,17 +299,12 @@ namespace simference
 				jumpAccepted = true;
 			}
 
-			//// TEST: While we're debugging, just force acceptance for all jumps
-			//bool jumpAccepted = true;
-			//currentStruct = newStruct;
-			//currentParams = dimMatchMap.translateExtendedToNew(lastAnnealingState.params);
-			//currLp = prevAnnealingLp;
-			//numJumpMovesAccepted++;
-			//if (!currentStruct->structurallyEquivalentTo(newStruct))
-			//	numDiffDimJumpMovesAccepted++;
-
 			currentUnrolledModel = templateModel->unroll(currentStruct);
 			innerSampler->reinitialize(currentStruct, *currentUnrolledModel, currentParams);
+
+			// Translate the parameters of all the annealing samples so we can analyze/visualize them later
+			for (Sample& s : annealingSamples)
+				s.params = dimMatchMap.translateExtendedToNew(s.params);
 
 			return Sample(currentStruct, currentParams, currLp, Sample::JumpEnd, jumpAccepted);
 		}

@@ -31,9 +31,6 @@ namespace simference
 			fNew.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sNew, root, exclude)));
 			exclude.insert(dtNew->provenance.oldSubtreeRoot);
 			fShared.push_back(FactorPtr(new GrammarFactorTemplate::Factor(sOld, dtOld->roots, exclude)));
-
-			//// TEST
-			//FactorTemplate::unroll(sOld, sNew, fOld, fNew, fShared);
 		}
 
 		GrammarFactorTemplate::Factor::Factor(StructurePtr dtree,
