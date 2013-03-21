@@ -228,7 +228,7 @@ void keyboard(unsigned char key, int x, int y)
 
 		// Invariant parameters
 		double jumpFrequency = 0.05;
-		unsigned int numIterations = 500;
+		unsigned int numIterations = 1000;
 		unsigned int numWarmup = 100;
 
 		double originalCollisionScale = MobileFactorTemplate::Factor::collisionScaleFactor;
@@ -238,6 +238,10 @@ void keyboard(unsigned char key, int x, int y)
 		ofstream log("log.csv");
 		log << "Adapt,Scale,AnnealSteps,Collisions,Torque,DiffusionAccept,AnnealAccept,JumpAccept" << endl;
 		log.close();
+
+		// Initialize sample log
+		ofstream samples("samples.csv");
+		samples << "Adapt,Scale,AnnealSteps,Collisions,Torque,SampleType,Accepted,IterationNumber" << endl;
 
 		for (auto adaptType : adaptTypes)
 		{
@@ -261,7 +265,7 @@ void keyboard(unsigned char key, int x, int y)
 							GrammarJumpSampler gs(ftmp, derivationTree, p, nAnneal, jumpFrequency);
 							vector<Sample> samples;
 							if (adaptType == "WarmUp")
-								JumpSampler::sampleWithWarmup(gs, samples, numIterations, numWarmup);
+								JumpSampler::sampleWithWarmup(gs, samples, numIterations + numWarmup, numWarmup);
 							else if (adaptType == "Continuous")
 								JumpSampler::sample(gs, samples, numIterations);
 
@@ -272,6 +276,20 @@ void keyboard(unsigned char key, int x, int y)
 							log << adaptType << "," << scaleMult << "," << nAnneal << "," << collOn << "," << torqueOn << ","
 								<< gs.diffusionAcceptanceRatio() << "," << gs.annealingAcceptanceRatio() << "," << gs.jumpAcceptanceRatio() << endl;
 							log.close();
+
+							// Spit out all samples
+							ofstream samps("samples.csv", ios_base::app);
+							for (unsigned int i = 0; i < samples.size(); i++)
+							{
+								auto& s = samples[i];
+								if (s.proposalType == Sample::Diffusion || s.proposalType == Sample::Annealing || s.proposalType == Sample::JumpEnd)
+								{
+									string stype = (s.proposalType == Sample::Diffusion ? "Diffusion" : (s.proposalType == Sample::Annealing ? "Annealing" : "Jump"));
+									samps << adaptType << "," << scaleMult << "," << nAnneal << "," << collOn << "," << torqueOn << ","
+										<< stype << "," << s.accepted << "," << i << endl;
+								}
+							}
+							samps.close();
 						}
 					}
 				}
