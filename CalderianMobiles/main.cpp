@@ -6,6 +6,7 @@
 #include <iostream>
 #include <chrono>
 #include <random>
+#include <fstream>
 #include <GL/glut.h>
 
 using namespace simference;
@@ -201,6 +202,81 @@ void keyboard(unsigned char key, int x, int y)
 		JumpSampler::sample(gs, mostRecentSamples, numLARJiters);
 
 		gs.writeAnalytics(cout);
+	}
+	else if (key == 'v')
+	{
+		// 'cross-validate' a bunch of different LARJ parameter choices
+		// - warm up adaptation VS continuous adaptation
+		// - broader distributions VS narrower distributions
+		// - more annealing steps VS fewer annealing steps
+		// - collisions ON/OFF
+		// - torque ON/OFF
+
+		FactorTemplateModelPtr ftmp = FactorTemplateModelPtr(new FactorTemplateModel);
+		ftmp->addTemplate(FactorTemplatePtr(new GrammarFactorTemplate));
+		ftmp->addTemplate(FactorTemplatePtr(new MobileFactorTemplate(anchor)));
+		vector<var> params; derivationTree->getParams(params);
+		vector<double> p; for (auto var : params) p.push_back(var.val());
+
+		string adaptTypes[2] = {"WarmUp", "Continuous"};
+		double scaleMultipliers[5] = { 0.1, 0.5, 1.0, 2.0, 10.0 };
+		unsigned int numAnnealingSteps[3] = { 20, 50, 100 };
+		//bool collisionsEnabled[2] = { true, false };
+		//bool torqueEnabled[2] = { true, false };
+		bool collisionsEnabled[1] = { true };
+		bool torqueEnabled[1] = { true };
+
+		// Invariant parameters
+		double jumpFrequency = 0.05;
+		unsigned int numIterations = 500;
+		unsigned int numWarmup = 100;
+
+		double originalCollisionScale = MobileFactorTemplate::Factor::collisionScaleFactor;
+		double originalTorqueScale = MobileFactorTemplate::Factor::torqueScaleFactor;
+
+		// Initialize log
+		ofstream log("log.csv");
+		log << "Adapt,Scale,AnnealSteps,Collisions,Torque,DiffusionAccept,AnnealAccept,JumpAccept" << endl;
+		log.close();
+
+		for (auto adaptType : adaptTypes)
+		{
+			for (auto scaleMult : scaleMultipliers)
+			{
+				for (auto nAnneal : numAnnealingSteps)
+				{
+					for (auto collOn : collisionsEnabled)
+					{
+						for (auto torqueOn : torqueEnabled)
+						{
+							// Enable/disable factor components
+							MobileFactorTemplate::Factor::collisionsEnabled = collOn;
+							MobileFactorTemplate::Factor::torqueEnabled = torqueOn;
+
+							// Set scales
+							MobileFactorTemplate::Factor::collisionScaleFactor = originalCollisionScale*scaleMult;
+							MobileFactorTemplate::Factor::torqueScaleFactor = originalTorqueScale*scaleMult;
+
+							// Set up and run sampler
+							GrammarJumpSampler gs(ftmp, derivationTree, p, nAnneal, jumpFrequency);
+							vector<Sample> samples;
+							if (adaptType == "WarmUp")
+								JumpSampler::sampleWithWarmup(gs, samples, numIterations, numWarmup);
+							else if (adaptType == "Continuous")
+								JumpSampler::sample(gs, samples, numIterations);
+
+							// Report
+							cout << "Adapt=" << adaptType << ", Scale=" << scaleMult << ", AnnealSteps=" << nAnneal << ", Collisions=" << collOn << ", Torque=" << torqueOn << endl;
+							gs.writeAnalytics(cout);
+							ofstream log("log.csv", std::ios_base::app);
+							log << adaptType << "," << scaleMult << "," << nAnneal << "," << collOn << "," << torqueOn << ","
+								<< gs.diffusionAcceptanceRatio() << "," << gs.annealingAcceptanceRatio() << "," << gs.jumpAcceptanceRatio() << endl;
+							log.close();
+						}
+					}
+				}
+			}
+		}
 	}
 
 	if (needsRedisplay)

@@ -30,28 +30,34 @@ namespace simference
 			var lp = 0.0;
 
 			// Static collision factors
-			static const double collisionScaleFactor = 0.33;
-			//static const double collisionScaleFactor = 4.0;
-			static const double rodXrodSD = 0.328407 * collisionScaleFactor;
-			static const double rodXstringSD = 1.10272 * collisionScaleFactor;
-			static const double rodXweightSD = 0.883831 * collisionScaleFactor;
-			static const double weightXstringSD = 1.20902 * collisionScaleFactor;
-			static const double weightXweightSD = 0.807079 * collisionScaleFactor;
-			auto collsum = mobile.checkStaticCollisions();
-			lp += NormalDistribution<var>::LogProb(collsum.rodXrod, 0.0, rodXrodSD);
-			lp += NormalDistribution<var>::LogProb(collsum.rodXstring, 0.0, rodXstringSD);
-			lp += NormalDistribution<var>::LogProb(collsum.rodXweight, 0.0, rodXweightSD);
-			lp += NormalDistribution<var>::LogProb(collsum.weightXstring, 0.0, weightXstringSD);
-			lp += NormalDistribution<var>::LogProb(collsum.weightXweight, 0.0, weightXweightSD);
+			if (collisionsEnabled)
+			{
+				double rodXrodSD = 0.328407 * collisionScaleFactor;
+				double rodXstringSD = 1.10272 * collisionScaleFactor;
+				double rodXweightSD = 0.883831 * collisionScaleFactor;
+				double weightXstringSD = 1.20902 * collisionScaleFactor;
+				double weightXweightSD = 0.807079 * collisionScaleFactor;
+				auto collsum = mobile.checkStaticCollisions();
+				lp += NormalDistribution<var>::LogProb(collsum.rodXrod, 0.0, rodXrodSD);
+				lp += NormalDistribution<var>::LogProb(collsum.rodXstring, 0.0, rodXstringSD);
+				lp += NormalDistribution<var>::LogProb(collsum.rodXweight, 0.0, rodXweightSD);
+				lp += NormalDistribution<var>::LogProb(collsum.weightXstring, 0.0, weightXstringSD);
+				lp += NormalDistribution<var>::LogProb(collsum.weightXweight, 0.0, weightXweightSD);
+			}
 
 			// Static equilibrium factor
-			static const double eqScaleFactor = 0.25;
-			//static const double eqScaleFactor = 4.0;
-			//static const double eqScaleFactor = 0.001;
-			static const double torqueSD = 360.0 * eqScaleFactor;
-			lp += NormalDistribution<var>::LogProb(mobile.softMaxTorqueNorm(), 0.0, torqueSD);
+			if (torqueEnabled)
+			{
+				double torqueSD = 360.0 * torqueScaleFactor;
+				lp += NormalDistribution<var>::LogProb(mobile.softMaxTorqueNorm(), 0.0, torqueSD);
+			}
 
 			return lp;
 		}
+
+		bool MobileFactorTemplate::Factor::collisionsEnabled = true;
+		double MobileFactorTemplate::Factor::collisionScaleFactor = 0.33;
+		bool MobileFactorTemplate::Factor::torqueEnabled = true;
+		double MobileFactorTemplate::Factor::torqueScaleFactor = 0.25; // 0.001?
 	}
 }

@@ -351,6 +351,63 @@ namespace simference
 			printf("\n");
 		}
 
+		void JumpSampler::sampleWithWarmup(JumpSampler& sampler,
+								vector<Sample>& samples,
+								int num_iterations,
+								int num_warmup ,
+								bool epsilon_adapt,
+								int num_thin,
+								bool save_warmup)
+		{
+			// Remember the correct jump probability
+			double jumpProb = sampler.jumpFrequency;
+
+			if (epsilon_adapt)
+			{
+				sampler.adaptOn();
+				sampler.jumpFrequency = 0.0;
+			}
+			for (int m = 0; m < num_iterations; ++m)
+			{
+				printf("Sampling iteration %d / %d\r", m+1, num_iterations);
+
+				if (m < num_warmup)
+				{
+					Sample sample = sampler.nextSample();
+					if (save_warmup && (m % num_thin) == 0)
+					{
+						samples.push_back(sample);
+					} 
+				}
+				else 
+				{
+					if (epsilon_adapt && sampler.adapting())
+					{
+						sampler.adaptOff();
+						sampler.jumpFrequency = jumpProb;
+					}
+
+					unsigned int numJumps = sampler.numJumpMovesAttempted;
+					Sample sample = sampler.nextSample();
+
+					if (((m - num_warmup) % num_thin) != 0)
+					{
+						continue;
+					}
+					else 
+					{
+						// If we just jumped, then we should splice in the annealing samples, too.
+						if (sampler.numJumpMovesAttempted > numJumps)
+						{
+							samples.insert(samples.end(), sampler.annealingSamples.begin(), sampler.annealingSamples.end());
+						}
+						samples.push_back(sample);
+					}
+				}
+			}
+			printf("\n");
+		}
+
 		void JumpSampler::writeAnalytics(std::ostream& out) const
 		{
 			out << "-----------------------------------------------" << endl;

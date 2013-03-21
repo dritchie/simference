@@ -19,6 +19,12 @@ namespace simference
 			public:
 				Factor(StructurePtr s, const Eigen::Vector3d& anchor);
 				stan::agrad::var log_prob(const ParameterVector<stan::agrad::var>& params);
+
+				static bool collisionsEnabled;
+				static double collisionScaleFactor;
+				static bool torqueEnabled;
+				static double torqueScaleFactor;
+
 			private:
 				Mobile<stan::agrad::var> mobile;
 			};

@@ -96,14 +96,28 @@ namespace simference
 			void adaptOff();
 			bool adapting();
 
-			// The ideal adaptation behavior is different for LARJ, so we
-			// use a specialized multi-sample routine
+			// This version doesn't have a warm-up period, and it uses
+			// epsilon-adaptation throughout the whole run.
 			static void sample(JumpSampler& sampler,
 								std::vector<Sample>& samples,
 								int num_iterations = 1000,
 								int num_thin = 1);
 
+			// This version uses a warm-up period with no jumps,
+			// then turns out epsilon adaptation
+			static void sampleWithWarmup(JumpSampler& sampler,
+								std::vector<Sample>& samples,
+								int num_iterations = 1000,
+								int num_warmup = 100,
+								bool epsilon_adapt = true,
+								int num_thin = 1,
+								bool save_warmup = false);
+
+			// Analytics
 			void writeAnalytics(std::ostream& out) const;
+			double diffusionAcceptanceRatio() { return ((double)numDiffusionMovesAccepted)/numDiffusionMovesAttempted; }
+			double annealingAcceptanceRatio() { return ((double)numAnnealingMovesAccepted)/numAnnealingMovesAttempted; }
+			double jumpAcceptanceRatio() { return ((double)numJumpMovesAccepted)/numJumpMovesAttempted; }
 
 		protected:
 
